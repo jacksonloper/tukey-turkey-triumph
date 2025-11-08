@@ -48,7 +48,8 @@ export class ScatterplotMatrix {
   }
 
   resize() {
-    const size = Math.min(800, window.innerWidth - 40);
+    // Account for app padding (2rem), play-area padding (24px), border (4px), and safety margin
+    const size = Math.min(800, window.innerWidth - 80);
     this.canvas.width = size;
     this.canvas.height = size;
     this.cellSize = (size - this.padding * 2) / this.dimensions;
