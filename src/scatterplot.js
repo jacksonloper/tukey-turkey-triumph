@@ -76,8 +76,11 @@ export class ScatterplotMatrix {
 
   getCellFromMouse(e) {
     const rect = this.canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // Scale from display coordinates to canvas logical coordinates
+    const scaleX = this.canvas.width / rect.width;
+    const scaleY = this.canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
     // Determine which cell was clicked
     const col = Math.floor((x - this.padding) / this.cellSize);

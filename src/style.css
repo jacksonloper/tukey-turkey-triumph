@@ -254,6 +254,16 @@ footer {
   margin-top: 2rem;
 }
 
+.version-info {
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.version-info #git-hash {
+  color: #00d4ff;
+  font-weight: 600;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
