@@ -126,13 +126,10 @@ h1 {
   object-fit: contain; /* maintain aspect ratio */
 }
 
-/* Prevent any size changes on canvas interaction */
+/* Prevent outline on canvas interaction */
 #game-canvas:active,
 #game-canvas:focus {
   outline: none;
-  transform: none;
-  width: auto !important;
-  height: auto !important;
 }
 
 .play-area {
