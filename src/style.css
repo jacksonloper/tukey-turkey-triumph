@@ -19,6 +19,7 @@ body {
   min-height: 100vh;
   background: #000000;
   -webkit-touch-callout: none; /* prevent context menu on long-press globally */
+  overflow-y: scroll; /* always show scrollbar gutter to prevent layout shift */
 }
 
 /* High-contrast link styles for dark background */
@@ -122,8 +123,7 @@ h1 {
   -webkit-user-select: none; /* Safari/iOS */
   -webkit-touch-callout: none; /* prevent context menu on long-press */
   display: block; /* prevent inline spacing */
-  max-width: 100%; /* prevent overflow */
-  object-fit: contain; /* maintain aspect ratio */
+  margin: 0 auto; /* center horizontally */
 }
 
 /* Prevent outline on canvas interaction */

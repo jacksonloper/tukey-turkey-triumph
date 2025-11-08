@@ -62,6 +62,8 @@ export class ScatterplotMatrix {
     this.canvas.style.width = size + 'px';
     this.canvas.style.height = size + 'px';
 
+    // IMPORTANT: Reset transform before scaling to avoid compounding
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     // Scale context to match DPR
     this.ctx.scale(dpr, dpr);
 
