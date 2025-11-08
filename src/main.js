@@ -35,18 +35,21 @@ function init() {
     }
   });
 
-  // Button also triggers movement while held
-  goButton.addEventListener('mousedown', () => {
+  // Button also triggers movement while held (pointer events for mobile + desktop)
+  goButton.addEventListener('pointerdown', (e) => {
+    if (e.cancelable) e.preventDefault();
+    try { goButton.setPointerCapture(e.pointerId); } catch {}
     game.setMovingForward(true);
   });
 
-  goButton.addEventListener('mouseup', () => {
+  const stopForward = (e) => {
     game.setMovingForward(false);
-  });
+    try { goButton.releasePointerCapture(e.pointerId); } catch {}
+  };
 
-  goButton.addEventListener('mouseleave', () => {
-    game.setMovingForward(false);
-  });
+  goButton.addEventListener('pointerup', stopForward);
+  goButton.addEventListener('pointercancel', stopForward);
+  goButton.addEventListener('pointerleave', stopForward);
 
   // Hide scroll hint only when at least half of the canvas is visible
   const updateScrollHint = () => {

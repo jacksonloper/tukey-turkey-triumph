@@ -33,14 +33,18 @@ export class ScatterplotMatrix {
     this.isMouseDown = false;
     this.holdDims = null; // [dimI, dimJ] being held
 
+    // Improve touch behavior on mobile
+    this.canvas.style.touchAction = 'none';
+
     // Set up canvas
     this.resize();
     window.addEventListener('resize', () => this.resize());
 
-    // Handle mouse events
-    this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
-    this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
-    this.canvas.addEventListener('mouseleave', (e) => this.handleMouseUp(e));
+    // Handle unified pointer events (works on mouse + touch)
+    this.canvas.addEventListener('pointerdown', (e) => this.handlePointerDown(e), { passive: false });
+    this.canvas.addEventListener('pointerup', (e) => this.handlePointerUp(e));
+    this.canvas.addEventListener('pointerleave', (e) => this.handlePointerUp(e));
+    this.canvas.addEventListener('pointercancel', (e) => this.handlePointerUp(e));
   }
 
   resize() {
@@ -88,7 +92,10 @@ export class ScatterplotMatrix {
     return null;
   }
 
-  handleMouseDown(e) {
+  handlePointerDown(e) {
+    // Prevent scrolling/zoom while interacting
+    if (e.cancelable) e.preventDefault();
+    try { this.canvas.setPointerCapture(e.pointerId); } catch {}
     const cell = this.getCellFromMouse(e);
     if (cell) {
       if (cell.diagonal) {
@@ -106,9 +113,10 @@ export class ScatterplotMatrix {
     }
   }
 
-  handleMouseUp(e) {
+  handlePointerUp(e) {
     this.isMouseDown = false;
     this.holdDims = null;
+    try { this.canvas.releasePointerCapture(e.pointerId); } catch {}
   }
 
   /**
