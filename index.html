@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tukey's Turkey Triumph</title>
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>Tukey's Turkey Triumph</h1>
+        <p class="subtitle">Navigate R⁴ • Rotate the Basis • Pardon Turkeys</p>
+      </header>
+      <div class="game-container">
+        <div class="about">
+          <p>
+            This game demonstrates what John W. Tukey called a “draughtsman’s display”: a matrix of pairwise scatterplots. Each off‑diagonal cell shows the projection of your 4D world onto a (Dim i, Dim j) plane; diagonals label dimensions. The grid stays aligned to the world’s cardinal axes while you rotate the current basis and move forward, so you can watch how the projections change as you navigate R⁴.
+          </p>
+          <p>
+            The matrix‑of‑scatterplots idea was originated by J. A. Hartigan in
+            <a href="https://scholar.google.com/scholar?q=Hartigan+Printer+Graphics+for+Clustering+1975" target="_blank" rel="noopener noreferrer">Printer Graphics for Clustering (1975)</a>,
+            where he arranged pairwise dot plots to reveal structure for cluster analysis. Tukey popularized the display and the name “draughtsman’s display”; it later became widely known as the scatterplot matrix (SPLOM).
+          </p>
+          <p>
+            The “pardon” theme nods to the U.S. presidential tradition of sparing a Thanksgiving turkey — a ritual documented since the mid‑20th century and formally framed as a “pardon” in 1989 by President George H. W. Bush. See
+            <a href="https://en.wikipedia.org/wiki/National_Thanksgiving_Turkey_Presentation" target="_blank" rel="noopener noreferrer">National Thanksgiving Turkey Presentation</a>
+            and the <a href="https://www.whitehousehistory.org/press-room/press-backgrounder-pardoning-the-thanksgiving-turkey" target="_blank" rel="noopener noreferrer">White House Historical Association backgrounder</a> for historical context.
+          </p>
+        </div>
+        <div class="controls-section">
+          <div class="section-title">Controls for play</div>
+          <div class="divider"></div>
+          <div class="goal-callout"><strong>Goal:</strong> Move your ship to the turkey to pardon it; a new turkey appears elsewhere.</div>
+          <div class="instructions instructions-top">
+          <p><strong>Move:</strong> Hold W (or click the big blue button) to move forward</p>
+            <p><strong>Rotate:</strong> Hold on any off‑diagonal cell (i, j) to rotate the current basis in the (i, j) plane</p>
+            <p><strong>Hop:</strong> Click a diagonal (D1–D4) to jump along that dimension</p>
+          </div>
+          <div class="ship-toggle" role="group" aria-label="Ship selection">
+            <span class="label">Ship:</span>
+            <label><input type="radio" name="ship" value="aerilou" checked> Aerilou (arcade)</label>
+            <label><input type="radio" name="ship" value="druuge"> Druuge (momentum)</label>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="go-button">Hold to Move Forward (or W)</button>
+        </div>
+
+        <div class="play-area">
+          <canvas id="game-canvas"></canvas>
+
+          <div class="info-panel">
+            <div class="stat">
+              <span class="label">Turkeys Pardoned:</span>
+              <span id="pardoned-count">0</span> / <span id="total-count">∞</span>
+            </div>
+            <div class="stat">
+              <span class="label">Movement:</span>
+              <span id="movement-status">Idle</span>
+            </div>
+            <div class="stat">
+              <span class="label">Distance to Turkey:</span>
+              <span id="distance-display">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      
+    </div>
+    <div id="scroll-hint" class="scroll-hint">
+      <div class="hint-text">Scroll to Play</div>
+      <div class="chevrons" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24">
+          <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <svg width="20" height="20" viewBox="0 0 24 24">
+          <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
