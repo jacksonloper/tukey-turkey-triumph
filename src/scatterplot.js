@@ -50,8 +50,23 @@ export class ScatterplotMatrix {
   resize() {
     // Account for app padding (2rem), play-area padding (24px), border (4px), and safety margin
     const size = Math.min(800, window.innerWidth - 80);
-    this.canvas.width = size;
-    this.canvas.height = size;
+
+    // Account for device pixel ratio for high-DPI displays
+    const dpr = window.devicePixelRatio || 1;
+
+    // Set canvas internal resolution (scaled by DPR)
+    this.canvas.width = size * dpr;
+    this.canvas.height = size * dpr;
+
+    // Set canvas CSS size (display size)
+    this.canvas.style.width = size + 'px';
+    this.canvas.style.height = size + 'px';
+
+    // Scale context to match DPR
+    this.ctx.scale(dpr, dpr);
+
+    // Store the display size for calculations
+    this.displaySize = size;
     this.cellSize = (size - this.padding * 2) / this.dimensions;
   }
 
@@ -76,13 +91,11 @@ export class ScatterplotMatrix {
 
   getCellFromMouse(e) {
     const rect = this.canvas.getBoundingClientRect();
-    // Scale from display coordinates to canvas logical coordinates
-    const scaleX = this.canvas.width / rect.width;
-    const scaleY = this.canvas.height / rect.height;
-    const x = (e.clientX - rect.left) * scaleX;
-    const y = (e.clientY - rect.top) * scaleY;
+    // Convert from screen coordinates to canvas display coordinates
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
-    // Determine which cell was clicked
+    // Determine which cell was clicked (using display size, not internal canvas size)
     const col = Math.floor((x - this.padding) / this.cellSize);
     const row = Math.floor((y - this.padding) / this.cellSize);
 
@@ -138,7 +151,9 @@ export class ScatterplotMatrix {
    */
   render(player, turkeys, ui = {}) {
     const ctx = this.ctx;
-    const { width, height } = this.canvas;
+    // Use displaySize instead of canvas.width/height (which are DPR-scaled)
+    const width = this.displaySize;
+    const height = this.displaySize;
 
     // Clear with black background
     ctx.fillStyle = '#000000';

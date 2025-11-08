@@ -121,6 +121,18 @@ h1 {
   user-select: none; /* prevent text selection interference */
   -webkit-user-select: none; /* Safari/iOS */
   -webkit-touch-callout: none; /* prevent context menu on long-press */
+  display: block; /* prevent inline spacing */
+  max-width: 100%; /* prevent overflow */
+  object-fit: contain; /* maintain aspect ratio */
+}
+
+/* Prevent any size changes on canvas interaction */
+#game-canvas:active,
+#game-canvas:focus {
+  outline: none;
+  transform: none;
+  width: auto !important;
+  height: auto !important;
 }
 
 .play-area {
