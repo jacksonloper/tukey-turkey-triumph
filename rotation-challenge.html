@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Rotation Matching Challenge</title>
+    <!-- MathJax for mathematical notation -->
+    <script>
+      MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['\\[', '\\]']]
+        },
+        svg: {
+          fontCache: 'global'
+        }
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>Rotation Matching Challenge</h1>
+        <p class="subtitle" id="subtitle">Align the Curves • Master SO(n) • Find the Hidden Rotation</p>
+      </header>
+      <div class="game-container">
+        <div class="about">
+          <p>
+            <strong>The Challenge:</strong> Two smooth curves are displayed on the $(n-1)$-sphere $S^{n-1} \subset \mathbb{R}^n$.
+            The orange curve is the original path. The cyan curve is the same path rotated by a secret matrix $R \in \text{SO}(n)$
+            (a uniformly random rotation sampled from the Haar measure). Your goal is to rotate your view until both curves align perfectly.
+          </p>
+          <p>
+            <strong>Mathematical Setup:</strong> The original path $\gamma: [0,1] \to S^{n-1}$ is a smooth curve constrained to the unit sphere.
+            The target curve is $R\gamma(t)$ for some unknown $R \in \text{SO}(n)$. You control an orientation matrix $Q \in \text{SO}(n)$
+            by applying incremental rotations. When $Q = R$, the rotated view of the target will match the original, and you win!
+          </p>
+          <p>
+            <strong>Controls:</strong> Click and hold any off-diagonal cell $(i,j)$ to continuously rotate in that plane.
+            The rotation accumulates in your current basis, gradually transforming your view. Watch all ${n \choose 2}$ projections
+            simultaneously to develop intuition for how rotations in different planes affect the alignment.
+          </p>
+          <p>
+            <a href="index.html">← Back to Turkey Hunt</a>
+          </p>
+        </div>
+        <div class="controls-section">
+          <div class="section-title">Challenge Controls</div>
+          <div class="divider"></div>
+          <div class="goal-callout"><strong>Goal:</strong> Rotate your view until the cyan curve aligns with the orange curve</div>
+          <div class="instructions instructions-top">
+            <p><strong>Rotate:</strong> Hold on any off-diagonal cell (i, j) to rotate in that plane</p>
+            <p><strong>New Puzzle:</strong> Click the "New Challenge" button to generate a fresh rotation</p>
+          </div>
+          <div class="dimension-selector">
+            <label for="dimension-select">Dimensions:</label>
+            <select id="dimension-select">
+              <option value="2">2D</option>
+              <option value="3">3D</option>
+              <option value="4" selected>4D</option>
+              <option value="5">5D</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="new-challenge-button">New Challenge</button>
+        </div>
+
+        <div class="play-area">
+          <canvas id="game-canvas"></canvas>
+
+          <div class="info-panel">
+            <div class="stat">
+              <span class="label">Alignment Score:</span>
+              <span id="alignment-score">—</span>
+            </div>
+            <div class="stat">
+              <span class="label">Status:</span>
+              <span id="challenge-status">Rotating...</span>
+            </div>
+            <div class="stat">
+              <span class="label">Best Score:</span>
+              <span id="best-score">0%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="version-info">
+          Build: <span id="git-hash">loading...</span>
+        </div>
+      </footer>
+    </div>
+    <div id="scroll-hint" class="scroll-hint">
+      <div class="hint-text">Scroll to Play</div>
+      <div class="chevrons" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24">
+          <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <svg width="20" height="20" viewBox="0 0 24 24">
+          <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+    <script type="module" src="/src/rotation-challenge-main.js"></script>
+  </body>
+</html>

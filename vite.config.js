@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { execSync } from 'child_process';
+import { resolve } from 'path';
 
 // Get git commit hash (fallback to 'dev' if not in a git repo)
 let gitHash = 'dev';
@@ -14,5 +15,13 @@ export default defineConfig({
   base: './',
   define: {
     __GIT_HASH__: JSON.stringify(gitHash),
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        rotation: resolve(__dirname, 'rotation-challenge.html'),
+      },
+    },
   },
 });

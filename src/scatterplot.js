@@ -215,10 +215,20 @@ export class ScatterplotMatrix {
       return matVecMultN(orientationInverse, relativePos);
     }) : [];
 
+    // Transform paths to oriented frame (for rotation challenge)
+    const pathsLocal = ui.paths ? ui.paths.map(pathData => ({
+      points: pathData.points.map(point => {
+        const relativePos = point.map((v, i) => v - player.position[i]);
+        return matVecMultN(orientationInverse, relativePos);
+      }),
+      color: pathData.color,
+      label: pathData.label
+    })) : [];
+
     // Draw each cell in the matrix
     for (let row = 0; row < this.dimensions; row++) {
       for (let col = 0; col < this.dimensions; col++) {
-        this.renderCell(row, col, playerLocal, turkeysLocal, ui, trailLocal);
+        this.renderCell(row, col, playerLocal, turkeysLocal, ui, trailLocal, pathsLocal);
       }
     }
 
@@ -230,7 +240,7 @@ export class ScatterplotMatrix {
   /**
    * Render a single scatterplot cell
    */
-  renderCell(row, col, playerLocal, turkeysLocal, ui, trailLocal = []) {
+  renderCell(row, col, playerLocal, turkeysLocal, ui, trailLocal = [], pathsLocal = []) {
     const ctx = this.ctx;
     const x = this.padding + col * this.cellSize;
     const y = this.padding + row * this.cellSize;
@@ -254,6 +264,13 @@ export class ScatterplotMatrix {
 
     // Draw axes
     this.drawAxes(x, y);
+
+    // Draw paths (for rotation challenge)
+    if (pathsLocal.length > 0) {
+      pathsLocal.forEach(pathData => {
+        this.drawPath(x, y, pathData, row, col);
+      });
+    }
 
     // Draw trail (behind everything else)
     if (trailLocal.length > 0) {
@@ -574,6 +591,47 @@ export class ScatterplotMatrix {
       }
       ctx.restore();
     }
+  }
+
+  /**
+   * Draw a smooth path as a connected curve
+   */
+  drawPath(cellX, cellY, pathData, dimI, dimJ) {
+    const ctx = this.ctx;
+    const innerSize = this.cellSize - this.cellPadding * 2;
+    const startX = cellX + this.cellPadding;
+    const startY = cellY + this.cellPadding;
+    const viewRange = this.gridRange;
+
+    const { points, color } = pathData;
+
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // Draw path as connected line segments
+    ctx.beginPath();
+    let firstPoint = true;
+
+    for (let i = 0; i < points.length; i++) {
+      const point = points[i];
+
+      // Project to screen coordinates
+      const px = startX + (point[dimJ] / viewRange + 1) * innerSize / 2;
+      const py = startY + (1 - (point[dimI] / viewRange + 1) / 2) * innerSize;
+
+      if (firstPoint) {
+        ctx.moveTo(px, py);
+        firstPoint = false;
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+
+    ctx.stroke();
+    ctx.restore();
   }
 
   /**
