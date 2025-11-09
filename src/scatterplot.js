@@ -183,8 +183,25 @@ export class ScatterplotMatrix {
     const turkeysLocal = turkeys.map(turkey => {
       const relativePos = turkey.position.map((v, i) => v - player.position[i]);
       const localPos = matVecMultN(orientationInverse, relativePos);
+
+      // Transform head and nose positions to local frame as well
+      let headPosLocal = null;
+      let nosePosLocal = null;
+      if (turkey.headOffset && turkey.noseOffset) {
+        const headWorldPos = turkey.position.map((v, i) => v + turkey.headOffset[i]);
+        const noseWorldPos = turkey.position.map((v, i) => v + turkey.noseOffset[i]);
+
+        const headRelative = headWorldPos.map((v, i) => v - player.position[i]);
+        const noseRelative = noseWorldPos.map((v, i) => v - player.position[i]);
+
+        headPosLocal = matVecMultN(orientationInverse, headRelative);
+        nosePosLocal = matVecMultN(orientationInverse, noseRelative);
+      }
+
       return {
         position: localPos,
+        headPosLocal: headPosLocal,
+        nosePosLocal: nosePosLocal,
         pardoned: turkey.pardoned,
         scale: turkey.scale,
         rotation: turkey.rotation,
@@ -565,25 +582,29 @@ export class ScatterplotMatrix {
       return { px, py };
     };
 
-    // Initialize offsets if they don't exist (for backwards compatibility)
-    if (!turkey.headOffset || !turkey.noseOffset) {
+    // Get positions for each turkey part (already in local coordinates)
+    const bodyPos = turkey.position;
+    let headPos, nosePos;
+
+    if (turkey.headPosLocal && turkey.nosePosLocal) {
+      // Use pre-transformed positions
+      headPos = turkey.headPosLocal;
+      nosePos = turkey.nosePosLocal;
+    } else {
+      // Backwards compatibility: create simple offsets in local space
+      // (This will look wrong because it's not properly transformed, but better than crashing)
       const rotation = turkey.rotation || 0;
       const cos = Math.cos(rotation);
       const sin = Math.sin(rotation);
 
-      turkey.headOffset = new Array(turkey.position.length).fill(0);
-      turkey.headOffset[0] = cos * 0.24;
-      turkey.headOffset[1] = sin * 0.24;
+      headPos = bodyPos.slice();
+      headPos[0] = (headPos[0] || 0) + cos * 0.24;
+      headPos[1] = (headPos[1] || 0) + sin * 0.24;
 
-      turkey.noseOffset = new Array(turkey.position.length).fill(0);
-      turkey.noseOffset[0] = cos * 0.16;
-      turkey.noseOffset[1] = sin * 0.16;
+      nosePos = bodyPos.slice();
+      nosePos[0] = (nosePos[0] || 0) + cos * 0.16;
+      nosePos[1] = (nosePos[1] || 0) + sin * 0.16;
     }
-
-    // Calculate world positions for each turkey part
-    const bodyPos = turkey.position;
-    const headPos = bodyPos.map((v, i) => v + turkey.headOffset[i]);
-    const nosePos = bodyPos.map((v, i) => v + turkey.noseOffset[i]);
 
     // Project each part to screen coordinates
     const body = projectToScreen(bodyPos);
