@@ -12,7 +12,7 @@ import {
   matrixLogN,
   matrixExpN,
   matScaleN,
-  lerpMatrixN
+  geodesicInterpSO
 } from './math4d.js';
 import { ScatterplotMatrix } from './scatterplot.js';
 import {
@@ -125,7 +125,8 @@ export class RotationChallenge {
       } else {
         // Smooth interpolation using ease-in-out
         const t = this.easeInOutCubic(this.halfwayProgress);
-        this.playerOrientation = lerpMatrixN(
+        // Use geodesic interpolation to preserve orthonormality
+        this.playerOrientation = geodesicInterpSO(
           this.halfwayStartOrientation,
           this.halfwayTargetOrientation,
           t

@@ -345,21 +345,37 @@ export function frobeniusNorm(mat) {
 /**
  * Matrix logarithm for rotation matrices in SO(n)
  * Uses truncated series expansion: log(M) = sum_{k=1}^N (-1)^(k+1) (M - I)^k / k
- * This converges for rotation matrices and gives a skew-symmetric result
+ *
+ * Uses many terms for better convergence with distant rotations
  */
-export function matrixLogN(mat, terms = 8) {
+export function matrixLogN(mat, maxTerms = 150) {
   const n = mat.length;
   const I = identityNxN(n);
   const A = matSubtractN(mat, I); // M - I
 
-  // Compute powers of A and accumulate the series
+  // Check if matrix is too far from identity
+  const normA = frobeniusNorm(A);
+
+  // If very close to identity, just return A (first order approximation)
+  if (normA < 1e-10) {
+    return A;
+  }
+
+  // Standard series expansion with many terms
   let result = matScaleN(A, 1); // First term: (M - I)
   let power = A; // Current power of A
 
-  for (let k = 2; k <= terms; k++) {
+  for (let k = 2; k <= maxTerms; k++) {
     power = matMultN(power, A); // A^k
-    const term = matScaleN(power, Math.pow(-1, k + 1) / k);
+    const coefficient = Math.pow(-1, k + 1) / k;
+    const term = matScaleN(power, coefficient);
     result = matAddN(result, term);
+
+    // Check if term is small enough for early termination
+    const termNorm = frobeniusNorm(term);
+    if (termNorm < 1e-14) {
+      break;
+    }
   }
 
   return result;
@@ -367,23 +383,42 @@ export function matrixLogN(mat, terms = 8) {
 
 /**
  * Matrix exponential for skew-symmetric matrices (Lie algebra so(n))
- * Uses truncated series expansion: exp(M) = sum_{k=0}^N M^k / k!
- * Converges for skew-symmetric matrices to elements of SO(n)
+ * Uses scaling and squaring for numerical stability:
+ * exp(M) = (exp(M / 2^s))^(2^s)
+ *
+ * This ensures we only compute exp of small matrices where the series converges well
  */
-export function matrixExpN(mat, terms = 10) {
+export function matrixExpN(mat, maxTerms = 20) {
   const n = mat.length;
   const I = identityNxN(n);
 
-  // Start with I (k=0 term)
+  // Compute Frobenius norm to determine scaling
+  const norm = frobeniusNorm(mat);
+
+  // Choose scaling factor s such that ||M / 2^s|| < 0.5
+  const s = Math.max(0, Math.ceil(Math.log2(norm / 0.5)));
+  const scaledMat = matScaleN(mat, 1 / Math.pow(2, s));
+
+  // Compute exp(M / 2^s) using series expansion
   let result = I;
-  let power = I; // M^0 = I
+  let power = I;
   let factorial = 1;
 
-  for (let k = 1; k <= terms; k++) {
-    power = matMultN(power, mat); // M^k
-    factorial *= k; // k!
+  for (let k = 1; k <= maxTerms; k++) {
+    power = matMultN(power, scaledMat);
+    factorial *= k;
     const term = matScaleN(power, 1 / factorial);
     result = matAddN(result, term);
+
+    // Early termination if term is negligible
+    if (frobeniusNorm(term) < 1e-14) {
+      break;
+    }
+  }
+
+  // Square s times to get exp(M) = (exp(M / 2^s))^(2^s)
+  for (let i = 0; i < s; i++) {
+    result = matMultN(result, result);
   }
 
   return result;
@@ -409,5 +444,34 @@ export function geodesicDistanceSO(R, Q) {
 
   // Compute Frobenius norm
   return frobeniusNorm(logMat);
+}
+
+/**
+ * Geodesic interpolation on SO(n)
+ * Computes Q(t) = A · exp(t · log(A^T · B))
+ * This preserves orthonormality throughout the interpolation
+ * @param {Array} A - Start rotation matrix (n×n)
+ * @param {Array} B - End rotation matrix (n×n)
+ * @param {number} t - Interpolation parameter (0 to 1)
+ * @returns {Array} Interpolated rotation matrix
+ */
+export function geodesicInterpSO(A, B, t) {
+  const n = A.length;
+
+  // Compute relative rotation: A^T · B
+  const AT = transposeN(A);
+  const relativeRotation = matMultN(AT, B);
+
+  // Take logarithm
+  const logRel = matrixLogN(relativeRotation);
+
+  // Scale by t
+  const scaledLog = matScaleN(logRel, t);
+
+  // Exponential back to SO(n)
+  const expScaled = matrixExpN(scaledLog);
+
+  // Apply to start: A · exp(t · log(A^T · B))
+  return matMultN(A, expScaled);
 }
 
