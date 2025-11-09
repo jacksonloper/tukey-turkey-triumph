@@ -5,6 +5,19 @@
     <link rel="icon" type="image/svg+xml" href="vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Tukey's Turkey Triumph</title>
+    <!-- MathJax for mathematical notation -->
+    <script>
+      MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['\\[', '\\]']]
+        },
+        svg: {
+          fontCache: 'global'
+        }
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
   </head>
   <body>
     <div id="app">
@@ -15,12 +28,15 @@
       <div class="game-container">
         <div class="about">
           <p>
-            This game demonstrates what John W. Tukey called a "draughtsman's display": a matrix of pairwise scatterplots. Each off‑diagonal cell shows the projection of your high-dimensional world onto a (Dim i, Dim j) plane; diagonals label dimensions. The grid stays aligned to the world's cardinal axes while you rotate the current basis and move forward, so you can watch how the projections change as you navigate through space.
+            This game demonstrates what John W. Tukey called a "draughtsman's display": a matrix of pairwise scatterplots. You navigate $n$-dimensional Euclidean space $\mathbb{R}^n$ (with $n \in \{2,3,4,5\}$) while viewing all ${n \choose 2}$ orthogonal projections simultaneously in an $n \times n$ matrix.
+          </p>
+          <p>
+            <strong>Mathematical Structure:</strong> At each moment, your position is $\mathbf{p} \in \mathbb{R}^n$ and your orientation is an orthogonal matrix $R \in \text{SO}(n)$. Cell $(i,j)$ displays the 2D projection $\pi_{ij}: \mathbb{R}^n \to \mathbb{R}^2$ defined by $\pi_{ij}(\mathbf{x}) = (x_j, x_i)$ where $\mathbf{x} = R^T(\mathbf{p}_{\text{world}} - \mathbf{p})$ transforms world coordinates into your oriented local frame. The cardinal grid remains world-aligned, so rotating your basis $R$ reveals how the $n$-dimensional structure projects into each 2D plane.
           </p>
           <p>
             The matrix‑of‑scatterplots idea was originated by J. A. Hartigan in
             <a href="https://scholar.google.com/scholar?q=Hartigan+Printer+Graphics+for+Clustering+1975" target="_blank" rel="noopener noreferrer">Printer Graphics for Clustering (1975)</a>,
-            where he arranged pairwise dot plots to reveal structure for cluster analysis. Tukey popularized the display and the name “draughtsman’s display”; it later became widely known as the scatterplot matrix (SPLOM).
+            where he arranged pairwise dot plots to reveal structure for cluster analysis. Tukey popularized the display and the name "draughtsman's display"; it later became widely known as the scatterplot matrix (SPLOM).
           </p>
           <p>
             The “pardon” theme nods to the U.S. presidential tradition of sparing a Thanksgiving turkey — a ritual documented since the mid‑20th century and formally framed as a “pardon” in 1989 by President George H. W. Bush. See
