@@ -468,18 +468,7 @@ export class ScatterplotMatrix {
     const startY = cellY + this.cellPadding;
     const cx = startX + innerSize / 2;
     const cy = startY + innerSize / 2;
-
-    const f = ui.forwardDir || [1,0,0,0];
-    const involvesDim0 = (dimI === 0 || dimJ === 0);
-    const vx = f[dimJ] || 0;
-    const vy = f[dimI] || 0;
-    // Unit vector for forward projection in this plane (pixels)
-    let fx = 0, fy = 0;
-    if (Math.abs(vx) + Math.abs(vy) > 1e-6) {
-      const len = Math.hypot(vx, vy);
-      fx = vx / len;
-      fy = -vy / len; // invert y for canvas
-    }
+    const viewRange = this.scatterplot ? this.scatterplot.gridRange : 4.0;
 
     for (const p of ui.puffs) {
       let alpha = 0.9;
@@ -491,90 +480,66 @@ export class ScatterplotMatrix {
       ctx.lineWidth = 1.5;
 
       if (p.type === 'linear') {
-        // Linear thrust puffs only visible in cells involving dimension 0
-        if (!involvesDim0 || (fx === 0 && fy === 0)) { ctx.restore(); continue; }
-        const back = -14; // pixels behind center
-        const px = cx + fx * back;
-        const py = cy + fy * back;
+        // Linear thrust puff: positioned behind ship along forward direction in local space
+        const f = ui.forwardDir || [];
+        const offset = -0.8; // units behind center in local space
+        const puffPosLocal = f.map(v => v * offset);
+
+        // Project into this 2D cell
+        const px = cx + (puffPosLocal[dimJ] / viewRange) * innerSize / 2;
+        const py = cy - (puffPosLocal[dimI] / viewRange) * innerSize / 2;
+
+        // Check if within visible bounds
+        const visible = Math.abs(puffPosLocal[dimI]) <= viewRange &&
+                       Math.abs(puffPosLocal[dimJ]) <= viewRange;
+        if (!visible) { ctx.restore(); continue; }
+
         ctx.beginPath();
         ctx.arc(px, py, 5, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
       } else if (p.type === 'angular') {
+        // Angular puffs: positioned at diagonal corners in the rotation plane
         const plane = p.plane || [-1,-1];
         const a = plane[0], b = plane[1];
+        const dir = -(p.dir || 1);
 
-        // Draw in any cell that involves either rotation dimension
-        const involvesRotation = (dimI === a || dimI === b || dimJ === a || dimJ === b);
-        if (!involvesRotation) { ctx.restore(); continue; }
+        // Create two puff positions in N-dimensional local space
+        const offset = 0.5; // units from center
+        const n = ui.forwardDir ? ui.forwardDir.length : 4;
 
-        // Check if this is the exact rotation plane
-        const isRotationPlane = ((dimI === a && dimJ === b) || (dimI === b && dimJ === a));
+        // Puff 1: +offset in dim a, +offset in dim b (or reversed for negative dir)
+        const puff1Local = new Array(n).fill(0);
+        const puff2Local = new Array(n).fill(0);
 
-        if (isRotationPlane) {
-          // This is the exact plane where rotation happens - show diagonal puffs
-          if (involvesDim0) {
-            // Elongated view: use forward and left vectors
-            let tfx = fx, tfy = fy;
-            if (tfx === 0 && tfy === 0) { tfx = 1; tfy = 0; }
-            const lx = -tfy; // left vector (perpendicular)
-            const ly = tfx;
-
-            const front = 12; // px along forward
-            const side = 10;  // px along left/right
-            const dir = -(p.dir || 1); // flipped to match physical torque direction
-
-            // For positive dir: left puff forward-left, right puff back-right
-            // For negative dir: left puff back-left, right puff forward-right
-            const leftX  = cx + (dir > 0 ? (tfx*front + lx*side) : (tfx*(-front) + lx*side));
-            const leftY  = cy + (dir > 0 ? (tfy*front + ly*side) : (tfy*(-front) + ly*side));
-            const rightX = cx + (dir > 0 ? (tfx*(-front) - lx*side) : (tfx*front - lx*side));
-            const rightY = cy + (dir > 0 ? (tfy*(-front) - ly*side) : (tfy*front - ly*side));
-
-            ctx.beginPath();
-            ctx.arc(leftX, leftY, 4.5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(rightX, rightY, 4.5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-          } else {
-            // Cross-section view: show puffs at diagonal corners
-            const offset = 7;  // px from center in each direction
-            const dir = -(p.dir || 1);
-
-            // Place puffs at opposite diagonal corners based on rotation direction
-            if (dir > 0) {
-              ctx.beginPath();
-              ctx.arc(cx + offset, cy - offset, 4.5, 0, Math.PI * 2); // top-right
-              ctx.fill();
-              ctx.stroke();
-              ctx.beginPath();
-              ctx.arc(cx - offset, cy + offset, 4.5, 0, Math.PI * 2); // bottom-left
-              ctx.fill();
-              ctx.stroke();
-            } else {
-              ctx.beginPath();
-              ctx.arc(cx - offset, cy - offset, 4.5, 0, Math.PI * 2); // top-left
-              ctx.fill();
-              ctx.stroke();
-              ctx.beginPath();
-              ctx.arc(cx + offset, cy + offset, 4.5, 0, Math.PI * 2); // bottom-right
-              ctx.fill();
-              ctx.stroke();
-            }
-          }
+        if (dir > 0) {
+          puff1Local[a] = offset;
+          puff1Local[b] = offset;
+          puff2Local[a] = -offset;
+          puff2Local[b] = -offset;
         } else {
-          // Edge-on view of the rotation - puffs appear inline or less prominently
-          const offset = 8;  // px from center
-          // Show puffs on opposite sides (simplified view)
+          puff1Local[a] = offset;
+          puff1Local[b] = -offset;
+          puff2Local[a] = -offset;
+          puff2Local[b] = offset;
+        }
+
+        // Project both puffs into this 2D cell and draw them
+        for (const puffLocal of [puff1Local, puff2Local]) {
+          const px = cx + (puffLocal[dimJ] / viewRange) * innerSize / 2;
+          const py = cy - (puffLocal[dimI] / viewRange) * innerSize / 2;
+
+          // Check if within visible bounds
+          const visible = Math.abs(puffLocal[dimI]) <= viewRange &&
+                         Math.abs(puffLocal[dimJ]) <= viewRange;
+          if (!visible) continue;
+
+          // Size varies: larger in rotation plane, smaller in edge-on views
+          const isRotationPlane = ((dimI === a && dimJ === b) || (dimI === b && dimJ === a));
+          const radius = isRotationPlane ? 4.5 : 3.5;
+
           ctx.beginPath();
-          ctx.arc(cx - offset, cy, 3.5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.arc(cx + offset, cy, 3.5, 0, Math.PI * 2);
+          ctx.arc(px, py, radius, 0, Math.PI * 2);
           ctx.fill();
           ctx.stroke();
         }
