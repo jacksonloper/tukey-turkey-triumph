@@ -591,19 +591,21 @@ export class ScatterplotMatrix {
       headPos = turkey.headPosLocal;
       nosePos = turkey.nosePosLocal;
     } else {
-      // Backwards compatibility: create simple offsets in local space
-      // (This will look wrong because it's not properly transformed, but better than crashing)
+      // Backwards compatibility: create random N-D direction based on rotation seed
       const rotation = turkey.rotation || 0;
-      const cos = Math.cos(rotation);
-      const sin = Math.sin(rotation);
 
-      headPos = bodyPos.slice();
-      headPos[0] = (headPos[0] || 0) + cos * 0.30;
-      headPos[1] = (headPos[1] || 0) + sin * 0.30;
+      // Use rotation as seed for deterministic random direction
+      const seededRandom = (seed, i) => {
+        const x = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
+        return x - Math.floor(x);
+      };
 
-      nosePos = bodyPos.slice();
-      nosePos[0] = (nosePos[0] || 0) + cos * 0.16;
-      nosePos[1] = (nosePos[1] || 0) + sin * 0.16;
+      const direction = bodyPos.map((_, i) => seededRandom(rotation, i) * 2 - 1);
+      const len = Math.sqrt(direction.reduce((sum, x) => sum + x*x, 0));
+      const unitDir = direction.map(x => x / len);
+
+      headPos = bodyPos.map((v, i) => v + unitDir[i] * 0.30);
+      nosePos = bodyPos.map((v, i) => v + unitDir[i] * 0.16);
     }
 
     // Project each part to screen coordinates

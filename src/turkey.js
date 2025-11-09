@@ -35,20 +35,17 @@ export class Turkey {
 
     // Part offsets in N-dimensional space (relative to body position)
     // These create a "turkey shape" that gets projected into each scatterplot
-    // Use rotation to orient the turkey in the first 2 dimensions
-    const cos = Math.cos(this.rotation);
-    const sin = Math.sin(this.rotation);
+    // Use a random direction in N-dimensional space for turkey orientation
+    const direction = Array.from({ length: this.position.length }, () => gaussianRandom());
+    const len = Math.sqrt(direction.reduce((sum, x) => sum + x*x, 0));
+    const unitDir = direction.map(x => x / len);
 
     // Head offset: positioned to be ~7.5 pixels away when projected
     // With viewRange=4 and typical innerSize~200px: 7.5px ≈ 0.30 world units
-    this.headOffset = new Array(this.position.length).fill(0);
-    this.headOffset[0] = cos * 0.30;
-    this.headOffset[1] = sin * 0.30;
+    this.headOffset = unitDir.map(x => x * 0.30);
 
     // Nose offset: positioned to be ~4 pixels away when projected
-    this.noseOffset = new Array(this.position.length).fill(0);
-    this.noseOffset[0] = cos * 0.16;
-    this.noseOffset[1] = sin * 0.16;
+    this.noseOffset = unitDir.map(x => x * 0.16);
   }
 
   /**
