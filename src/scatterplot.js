@@ -519,19 +519,33 @@ export class ScatterplotMatrix {
           ctx.fill();
           ctx.stroke();
         } else {
-          // Cross-section view: show puffs on opposite sides (perpendicular to rotation plane)
-          const side = 10;  // px from center
+          // Cross-section view: show puffs at diagonal corners
+          // For angular momentum, puffs should be offset diagonally to show rotation
+          const offset = 7;  // px from center in each direction
           const dir = -(p.dir || 1);
 
-          // For a square cross-section, show puffs on left/right or top/bottom depending on rotation direction
-          ctx.beginPath();
-          ctx.arc(cx - side, cy, 4.5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.arc(cx + side, cy, 4.5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
+          // Place puffs at opposite diagonal corners based on rotation direction
+          // Positive dir: top-right and bottom-left
+          // Negative dir: top-left and bottom-right
+          if (dir > 0) {
+            ctx.beginPath();
+            ctx.arc(cx + offset, cy - offset, 4.5, 0, Math.PI * 2); // top-right
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(cx - offset, cy + offset, 4.5, 0, Math.PI * 2); // bottom-left
+            ctx.fill();
+            ctx.stroke();
+          } else {
+            ctx.beginPath();
+            ctx.arc(cx - offset, cy - offset, 4.5, 0, Math.PI * 2); // top-left
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(cx + offset, cy + offset, 4.5, 0, Math.PI * 2); // bottom-right
+            ctx.fill();
+            ctx.stroke();
+          }
         }
       }
       ctx.restore();
