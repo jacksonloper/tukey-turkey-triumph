@@ -366,6 +366,30 @@ export function matrixLogN(mat, terms = 8) {
 }
 
 /**
+ * Matrix exponential for skew-symmetric matrices (Lie algebra so(n))
+ * Uses truncated series expansion: exp(M) = sum_{k=0}^N M^k / k!
+ * Converges for skew-symmetric matrices to elements of SO(n)
+ */
+export function matrixExpN(mat, terms = 10) {
+  const n = mat.length;
+  const I = identityNxN(n);
+
+  // Start with I (k=0 term)
+  let result = I;
+  let power = I; // M^0 = I
+  let factorial = 1;
+
+  for (let k = 1; k <= terms; k++) {
+    power = matMultN(power, mat); // M^k
+    factorial *= k; // k!
+    const term = matScaleN(power, 1 / factorial);
+    result = matAddN(result, term);
+  }
+
+  return result;
+}
+
+/**
  * Geodesic distance on SO(n) between two rotation matrices
  * Computes ||log(R^T Q)||_F where ||·||_F is the Frobenius norm
  *

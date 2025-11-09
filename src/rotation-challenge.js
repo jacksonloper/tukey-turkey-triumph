@@ -8,7 +8,11 @@ import {
   rotationND,
   matMultN,
   transposeN,
-  geodesicDistanceSO
+  geodesicDistanceSO,
+  matrixLogN,
+  matrixExpN,
+  matScaleN,
+  lerpMatrixN
 } from './math4d.js';
 import { ScatterplotMatrix } from './scatterplot.js';
 import {
@@ -41,6 +45,13 @@ export class RotationChallenge {
     this.bestDistance = Infinity;
     this.winThreshold = 0.1; // Geodesic distance threshold for winning (close to 0)
     this.hasWon = false;
+
+    // Halfway animation state
+    this.isAnimatingHalfway = false;
+    this.halfwayProgress = 0;
+    this.halfwayDuration = 0.5; // seconds
+    this.halfwayStartOrientation = null;
+    this.halfwayTargetOrientation = null;
 
     // Rendering
     this.scatterplot = new ScatterplotMatrix(canvas, dimensions);
@@ -102,15 +113,35 @@ export class RotationChallenge {
    * Update game state
    */
   update(dt) {
-    // Check for continuous rotation
-    const heldDims = this.scatterplot.checkContinuousRotation();
+    // Handle halfway animation (takes precedence over manual rotation)
+    if (this.isAnimatingHalfway) {
+      this.halfwayProgress += dt / this.halfwayDuration;
 
-    if (heldDims) {
-      const [i, j] = heldDims;
-      const angle = this.rotationSpeed * dt;
-      const rotStep = rotationND(this.dimensions, i, j, angle);
-      // Apply rotation in current local basis: post-multiply
-      this.playerOrientation = matMultN(this.playerOrientation, rotStep);
+      if (this.halfwayProgress >= 1.0) {
+        // Animation complete
+        this.playerOrientation = this.halfwayTargetOrientation;
+        this.isAnimatingHalfway = false;
+        this.halfwayProgress = 0;
+      } else {
+        // Smooth interpolation using ease-in-out
+        const t = this.easeInOutCubic(this.halfwayProgress);
+        this.playerOrientation = lerpMatrixN(
+          this.halfwayStartOrientation,
+          this.halfwayTargetOrientation,
+          t
+        );
+      }
+    } else {
+      // Check for continuous rotation (only when not animating)
+      const heldDims = this.scatterplot.checkContinuousRotation();
+
+      if (heldDims) {
+        const [i, j] = heldDims;
+        const angle = this.rotationSpeed * dt;
+        const rotStep = rotationND(this.dimensions, i, j, angle);
+        // Apply rotation in current local basis: post-multiply
+        this.playerOrientation = matMultN(this.playerOrientation, rotStep);
+      }
     }
 
     // Compute current geodesic distance
@@ -123,6 +154,13 @@ export class RotationChallenge {
     }
 
     this.updateUI();
+  }
+
+  /**
+   * Ease-in-out cubic for smooth animation
+   */
+  easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
 
   /**
@@ -192,6 +230,35 @@ export class RotationChallenge {
         this.challengeStatusEl.style.color = '#ffffff';
       }
     }
+  }
+
+  /**
+   * Move halfway toward the target rotation (Zeno's paradox style)
+   */
+  halfTheDistance() {
+    if (this.isAnimatingHalfway) return; // Already animating
+
+    // Compute relative rotation: Q^T R (what we need to apply to Q to get R)
+    const QT = transposeN(this.playerOrientation);
+    const relativeRotation = matMultN(QT, this.targetRotation);
+
+    // Take logarithm to get Lie algebra element
+    const logRel = matrixLogN(relativeRotation);
+
+    // Scale by 0.5 to get halfway
+    const halfLogRel = matScaleN(logRel, 0.5);
+
+    // Exponential back to SO(n)
+    const halfRotation = matrixExpN(halfLogRel);
+
+    // Apply to current orientation: Q_new = Q * exp(0.5 * log(Q^T R))
+    const targetOrientation = matMultN(this.playerOrientation, halfRotation);
+
+    // Start animation
+    this.isAnimatingHalfway = true;
+    this.halfwayProgress = 0;
+    this.halfwayStartOrientation = this.playerOrientation;
+    this.halfwayTargetOrientation = targetOrientation;
   }
 
   /**

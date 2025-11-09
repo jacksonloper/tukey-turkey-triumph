@@ -9,6 +9,7 @@ import { RotationChallenge } from './rotation-challenge.js';
 function init() {
   const canvas = document.getElementById('game-canvas');
   const newChallengeButton = document.getElementById('new-challenge-button');
+  const halfDistanceButton = document.getElementById('half-distance-button');
   const dimensionSelect = document.getElementById('dimension-select');
   const subtitle = document.getElementById('subtitle');
   const scrollHint = document.getElementById('scroll-hint');
@@ -27,6 +28,11 @@ function init() {
   // New challenge button
   newChallengeButton.addEventListener('click', () => {
     challenge.newChallenge();
+  });
+
+  // Half the distance button
+  halfDistanceButton.addEventListener('click', () => {
+    challenge.halfTheDistance();
   });
 
   // Dimension selector wiring
