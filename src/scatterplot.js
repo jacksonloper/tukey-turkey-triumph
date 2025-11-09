@@ -48,8 +48,16 @@ export class ScatterplotMatrix {
   }
 
   resize() {
-    // Account for app padding (2rem), play-area padding (24px), border (4px), and safety margin
-    const size = Math.min(800, window.innerWidth - 80);
+    // Calculate available width dynamically based on viewport
+    // Mobile (< 600px): app padding 0.5rem, play-area padding 8px, border 2px
+    // Desktop: app padding 1rem, play-area padding 12px, border 2px
+    const isMobile = window.innerWidth < 600;
+    const appPadding = isMobile ? 16 : 32; // 0.5rem or 1rem * 2 sides
+    const playAreaPadding = isMobile ? 16 : 24; // 8px or 12px * 2 sides
+    const playAreaBorder = 4; // 2px * 2 sides
+    const totalPadding = appPadding + playAreaPadding + playAreaBorder;
+
+    const size = Math.min(800, window.innerWidth - totalPadding);
 
     // Account for device pixel ratio for high-DPI displays
     const dpr = window.devicePixelRatio || 1;
