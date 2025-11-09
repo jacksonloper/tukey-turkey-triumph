@@ -9,9 +9,6 @@ import {
   matMultN,
   transposeN,
   geodesicDistanceSO,
-  matrixLogN,
-  matrixExpN,
-  matScaleN,
   geodesicInterpSO
 } from './math4d.js';
 import { ScatterplotMatrix } from './scatterplot.js';
@@ -239,21 +236,13 @@ export class RotationChallenge {
   halfTheDistance() {
     if (this.isAnimatingHalfway) return; // Already animating
 
-    // Compute relative rotation: Q^T R (what we need to apply to Q to get R)
-    const QT = transposeN(this.playerOrientation);
-    const relativeRotation = matMultN(QT, this.targetRotation);
-
-    // Take logarithm to get Lie algebra element
-    const logRel = matrixLogN(relativeRotation);
-
-    // Scale by 0.5 to get halfway
-    const halfLogRel = matScaleN(logRel, 0.5);
-
-    // Exponential back to SO(n)
-    const halfRotation = matrixExpN(halfLogRel);
-
-    // Apply to current orientation: Q_new = Q * exp(0.5 * log(Q^T R))
-    const targetOrientation = matMultN(this.playerOrientation, halfRotation);
+    // Use geodesicInterpSO which now uses robust Gram-Schmidt approach
+    // No need for manual log/exp computation
+    const targetOrientation = geodesicInterpSO(
+      this.playerOrientation,
+      this.targetRotation,
+      0.5
+    );
 
     // Start animation
     this.isAnimatingHalfway = true;

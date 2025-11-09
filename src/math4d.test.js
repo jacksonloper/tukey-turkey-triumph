@@ -10,8 +10,6 @@ import {
   matMultN,
   transposeN,
   geodesicInterpSO,
-  matrixLogN,
-  matrixExpN,
   geodesicDistanceSO
 } from './math4d.js';
 import { sampleRandomRotation } from './sphere-path.js';
@@ -186,23 +184,6 @@ describe('Matrix Operations', () => {
     });
   });
 
-  describe('Matrix Logarithm and Exponential', () => {
-    it('should be inverse operations for rotations close to identity', () => {
-      const n = 3;
-      // Generate a small rotation (close to identity)
-      const R = rotationND(n, 0, 1, 0.2);
-
-      const logR = matrixLogN(R);
-      const expLogR = matrixExpN(logR);
-
-      // exp(log(R)) should equal R
-      for (let i = 0; i < n; i++) {
-        for (let j = 0; j < n; j++) {
-          expect(Math.abs(expLogR[i][j] - R[i][j])).toBeLessThan(1e-6);
-        }
-      }
-    });
-  });
 
   describe('Geodesic Distance', () => {
     it('should be zero for identical rotations', () => {
