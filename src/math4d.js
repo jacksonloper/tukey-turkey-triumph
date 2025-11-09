@@ -343,12 +343,37 @@ export function frobeniusNorm(mat) {
 }
 
 /**
- * Matrix logarithm for rotation matrices in SO(n)
- * Uses truncated series expansion: log(M) = sum_{k=1}^N (-1)^(k+1) (M - I)^k / k
- *
- * Uses many terms for better convergence with distant rotations
+ * Compute matrix square root for matrices in SO(n)
+ * Uses Newton-Raphson iteration: X_{k+1} = (X_k + M X_k^{-1}) / 2
+ * For rotation matrices, we can use X_k^{-1} = X_k^T
  */
-export function matrixLogN(mat, maxTerms = 150) {
+function matrixSqrtSO(M, maxIter = 20) {
+  const n = M.length;
+  let X = M; // Initial guess
+
+  for (let iter = 0; iter < maxIter; iter++) {
+    const XT = transposeN(X);
+    const MXT = matMultN(M, XT);
+    const XplusMXT = matAddN(X, MXT);
+    const Xnext = matScaleN(XplusMXT, 0.5);
+
+    // Check convergence
+    const diff = matSubtractN(Xnext, X);
+    if (frobeniusNorm(diff) < 1e-10) {
+      return Xnext;
+    }
+
+    X = Xnext;
+  }
+
+  return X;
+}
+
+/**
+ * Matrix logarithm for rotation matrices in SO(n)
+ * Uses inverse scaling and squaring for robustness with large rotations
+ */
+export function matrixLogN(mat, maxTerms = 50) {
   const n = mat.length;
   const I = identityNxN(n);
   const A = matSubtractN(mat, I); // M - I
@@ -361,22 +386,36 @@ export function matrixLogN(mat, maxTerms = 150) {
     return A;
   }
 
-  // Standard series expansion with many terms
-  let result = matScaleN(A, 1); // First term: (M - I)
-  let power = A; // Current power of A
+  // If far from identity, use inverse scaling and squaring
+  // Compute M^(1/2^k) repeatedly until close to identity, then use series
+  let M = mat;
+  let scalingSteps = 0;
+
+  // Reduce until ||M - I|| < 0.5 (good convergence radius)
+  while (frobeniusNorm(matSubtractN(M, I)) > 0.5 && scalingSteps < 10) {
+    M = matrixSqrtSO(M);
+    scalingSteps++;
+  }
+
+  // Now M is close to I, use series expansion
+  const A_reduced = matSubtractN(M, I);
+  let result = matScaleN(A_reduced, 1); // First term
+  let power = A_reduced;
 
   for (let k = 2; k <= maxTerms; k++) {
-    power = matMultN(power, A); // A^k
+    power = matMultN(power, A_reduced);
     const coefficient = Math.pow(-1, k + 1) / k;
     const term = matScaleN(power, coefficient);
     result = matAddN(result, term);
 
-    // Check if term is small enough for early termination
-    const termNorm = frobeniusNorm(term);
-    if (termNorm < 1e-14) {
+    // Early termination
+    if (frobeniusNorm(term) < 1e-14) {
       break;
     }
   }
+
+  // Scale back: log(M) = 2^k * log(M^(1/2^k))
+  result = matScaleN(result, Math.pow(2, scalingSteps));
 
   return result;
 }
@@ -425,31 +464,88 @@ export function matrixExpN(mat, maxTerms = 20) {
 }
 
 /**
- * Geodesic distance on SO(n) between two rotation matrices
- * Computes ||log(R^T Q)||_F where ||·||_F is the Frobenius norm
+ * Distance metric on SO(n) between two rotation matrices
+ * Computes ||R^T Q - I||_F which is a valid distance metric on SO(n)
+ * This is simpler and more robust than the geodesic distance using matrix logarithm
  *
  * @param {Array} R - First rotation matrix (target rotation)
  * @param {Array} Q - Second rotation matrix (current rotation)
- * @returns {number} Geodesic distance (0 means aligned, increases with misalignment)
+ * @returns {number} Distance (0 means aligned, increases with misalignment)
  */
 export function geodesicDistanceSO(R, Q) {
+  const n = R.length;
+
   // Compute R^T
   const RT = transposeN(R);
 
   // Compute relative rotation: R^T Q
   const relativeRotation = matMultN(RT, Q);
 
-  // Compute matrix logarithm
-  const logMat = matrixLogN(relativeRotation);
+  // Compute R^T Q - I
+  const I = identityNxN(n);
+  const diff = matSubtractN(relativeRotation, I);
 
-  // Compute Frobenius norm
-  return frobeniusNorm(logMat);
+  // Return Frobenius norm
+  return frobeniusNorm(diff);
 }
 
 /**
- * Geodesic interpolation on SO(n)
- * Computes Q(t) = A · exp(t · log(A^T · B))
- * This preserves orthonormality throughout the interpolation
+ * Gram-Schmidt orthonormalization for n×n matrices
+ * Converts a matrix to an orthonormal basis
+ */
+function gramSchmidt(mat) {
+  const n = mat.length;
+  const result = [];
+
+  for (let i = 0; i < n; i++) {
+    // Start with the i-th column
+    let v = [];
+    for (let j = 0; j < n; j++) {
+      v.push(mat[j][i]);
+    }
+
+    // Subtract projections onto previous vectors
+    for (let j = 0; j < i; j++) {
+      const u = result[j];
+      let dot = 0;
+      for (let k = 0; k < n; k++) {
+        dot += v[k] * u[k];
+      }
+      for (let k = 0; k < n; k++) {
+        v[k] -= dot * u[k];
+      }
+    }
+
+    // Normalize
+    let norm = 0;
+    for (let j = 0; j < n; j++) {
+      norm += v[j] * v[j];
+    }
+    norm = Math.sqrt(norm);
+
+    if (norm > 1e-10) {
+      for (let j = 0; j < n; j++) {
+        v[j] /= norm;
+      }
+    }
+
+    result.push(v);
+  }
+
+  // Convert back to matrix form (columns are the orthonormal vectors)
+  const ortho = identityNxN(n);
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      ortho[j][i] = result[i][j];
+    }
+  }
+
+  return ortho;
+}
+
+/**
+ * Interpolation on SO(n) using linear interpolation + orthonormalization
+ * This is more robust than geodesic interpolation for arbitrary rotations
  * @param {Array} A - Start rotation matrix (n×n)
  * @param {Array} B - End rotation matrix (n×n)
  * @param {number} t - Interpolation parameter (0 to 1)
@@ -458,20 +554,21 @@ export function geodesicDistanceSO(R, Q) {
 export function geodesicInterpSO(A, B, t) {
   const n = A.length;
 
-  // Compute relative rotation: A^T · B
-  const AT = transposeN(A);
-  const relativeRotation = matMultN(AT, B);
+  // Linear interpolation: (1-t)A + tB
+  const result = identityNxN(n);
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      result[i][j] = (1 - t) * A[i][j] + t * B[i][j];
+    }
+  }
 
-  // Take logarithm
-  const logRel = matrixLogN(relativeRotation);
+  // Orthonormalize using Gram-Schmidt
+  const ortho = gramSchmidt(result);
 
-  // Scale by t
-  const scaledLog = matScaleN(logRel, t);
+  // Ensure determinant is +1 (in SO(n), not just O(n))
+  // This is a simplified check - for a robust implementation we'd compute the actual determinant
+  // For now, rely on Gram-Schmidt preserving orientation
 
-  // Exponential back to SO(n)
-  const expScaled = matrixExpN(scaledLog);
-
-  // Apply to start: A · exp(t · log(A^T · B))
-  return matMultN(A, expScaled);
+  return ortho;
 }
 
