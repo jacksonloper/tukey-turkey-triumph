@@ -4,31 +4,46 @@
 
 import {
   vec4,
+  vecN,
   add4,
+  addN,
   scale4,
+  scaleN,
   identity4x4,
+  identityNxN,
   rotation4D,
+  rotationND,
   matVecMult,
+  matVecMultN,
   matMult,
+  matMultN,
   distance4,
+  distanceN,
   lerp,
-  lerpMatrix
+  lerpMatrix,
+  lerpMatrixN
 } from './math4d.js';
 import { createTurkeyFlock, Turkey } from './turkey.js';
 import { ScatterplotMatrix } from './scatterplot.js';
 
 export class Game {
-  constructor(canvas) {
+  constructor(canvas, dimensions = 4) {
+    this.dimensions = dimensions;
+
     // Player state
     this.player = {
-      position: vec4(0, 0, 0, 0), // Start at origin
-      orientation: identity4x4(), // Current orientation matrix
-      forwardDir: vec4(1, 0, 0, 0) // Forward direction in local space
+      position: vecN(dimensions), // Start at origin
+      orientation: identityNxN(dimensions), // Current orientation matrix
+      forwardDir: (() => {
+        const v = vecN(dimensions);
+        v[0] = 1;
+        return v;
+      })() // Forward direction in local space
     };
 
     // Rotation animation
-    this.targetOrientation = identity4x4();
-    this.startOrientation = identity4x4();
+    this.targetOrientation = identityNxN(dimensions);
+    this.startOrientation = identityNxN(dimensions);
     this.isRotating = false;
     this.rotationProgress = 0;
     this.rotationDuration = 0.25; // seconds for rotation (faster for continuous rotation)
@@ -41,13 +56,13 @@ export class Game {
     this.moveSpeed = 0.8; // Units per second (aerilou)
 
     // Momentum ship dynamics (Druuge)
-    this.playerVelocity = vec4(0, 0, 0, 0);
+    this.playerVelocity = vecN(dimensions);
     this.linearThrust = 1.4; // accel (units/s^2)
     this.linearDamp = 0.8;   // 1/s (less damping)
     this.maxSpeed = 2.0;
-    // Angular velocity for six 4D planes: [01,02,03,12,13,23]
-    this.planes = [[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]];
-    this.angularVel = new Float32Array(6);
+    // Angular velocity for all rotation planes
+    this.planes = this.generateRotationPlanes(dimensions);
+    this.angularVel = new Float32Array(this.planes.length);
     this.angularThrust = 2.5; // rad/s^2
     this.angularDamp = 1.1;   // 1/s (less damping)
     this.maxAngVel = 3.0;     // rad/s
@@ -66,7 +81,7 @@ export class Game {
     this.pardonedTotal = 0; // running total across spawns
 
     // Rendering
-    this.scatterplot = new ScatterplotMatrix(canvas);
+    this.scatterplot = new ScatterplotMatrix(canvas, dimensions);
     // Rotation handled smoothly while mouse is held on a cell; no discrete step on click
     this.scatterplot.onPlotClick((dimI, dimJ) => {});
     this.scatterplot.onDiagonalClick((dim) => this.moveAlongDimension(dim));
@@ -91,6 +106,20 @@ export class Game {
     this.isRotatingContinuous = false;
   }
 
+  /**
+   * Generate all rotation planes for N dimensions
+   * Returns all pairs [i, j] where i < j
+   */
+  generateRotationPlanes(n) {
+    const planes = [];
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        planes.push([i, j]);
+      }
+    }
+    return planes;
+  }
+
   setShipType(type) {
     // Accept 'aerilou' or 'druuge' (momentum)
     if (type !== 'aerilou' && type !== 'druuge') return;
@@ -112,8 +141,8 @@ export class Game {
     this.startOrientation = this.player.orientation;
 
     // Create target orientation with small rotation in current local basis (post-multiply)
-    const rotMat = rotation4D(dimI, dimJ, this.rotationAngle);
-    this.targetOrientation = matMult(this.player.orientation, rotMat);
+    const rotMat = rotationND(this.dimensions, dimI, dimJ, this.rotationAngle);
+    this.targetOrientation = matMultN(this.player.orientation, rotMat);
 
     this.updateMovementStatus();
   }
@@ -128,20 +157,20 @@ export class Game {
 
   /**
    * Move along a specific dimension in player's reference frame
-   * @param {number} dim - Dimension index (0-3)
+   * @param {number} dim - Dimension index (0 to dimensions-1)
    */
   moveAlongDimension(dim) {
     // Create a unit vector in the specified dimension (player's local frame)
-    const localDir = vec4(0, 0, 0, 0);
+    const localDir = vecN(this.dimensions);
     localDir[dim] = 1;
 
     // Transform to world space
-    const worldDir = matVecMult(this.player.orientation, localDir);
+    const worldDir = matVecMultN(this.player.orientation, localDir);
 
     // Move a fixed distance
     const distance = 0.5;
-    const movement = scale4(worldDir, distance);
-    this.player.position = add4(this.player.position, movement);
+    const movement = scaleN(worldDir, distance);
+    this.player.position = addN(this.player.position, movement);
 
     // Check for turkeys to pardon
     this.checkPardonRadius();
@@ -153,7 +182,7 @@ export class Game {
   checkPardonRadius() {
     for (let i = 0; i < this.turkeys.length; i++) {
       const turkey = this.turkeys[i];
-      const dist = distance4(this.player.position, turkey.position);
+      const dist = distanceN(this.player.position, turkey.position);
       if (dist < this.pardonRadius) {
         // Increment running total and respawn a new turkey elsewhere
         this.pardonedTotal += 1;
@@ -178,9 +207,9 @@ export class Game {
       if (heldDims) {
         const [i, j] = heldDims;
         const angle = this.rotationSpeed * dt;
-        const rotStep = rotation4D(i, j, angle);
+        const rotStep = rotationND(this.dimensions, i, j, angle);
         // Apply rotation in the current local basis: post-multiply
-        this.player.orientation = matMult(this.player.orientation, rotStep);
+        this.player.orientation = matMultN(this.player.orientation, rotStep);
         this.isRotatingContinuous = true;
       } else {
         this.isRotatingContinuous = false;
@@ -213,7 +242,7 @@ export class Game {
     // Enforce world bounds (hypercube) on turkeys
     const r = this.scatterplot.gridRange;
     this.turkeys.forEach(t => {
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < this.dimensions; i++) {
         if (t.position[i] < -r) {
           t.position[i] = -r;
           if (t.velocity && t.velocity[i] < 0) t.velocity[i] *= -0.3; // damped bounce
@@ -240,24 +269,24 @@ export class Game {
       } else {
         // Smooth interpolation using ease-in-out
         const t = this.easeInOutCubic(this.rotationProgress);
-        this.player.orientation = lerpMatrix(this.startOrientation, this.targetOrientation, t);
+        this.player.orientation = lerpMatrixN(this.startOrientation, this.targetOrientation, t);
       }
     }
 
     if (this.shipType === 'aerilou') {
       // Direct forward movement
       if (this.isMovingForward) {
-        const worldDir = matVecMult(this.player.orientation, this.player.forwardDir);
-        const movement = scale4(worldDir, this.moveSpeed * dt);
-        this.player.position = add4(this.player.position, movement);
+        const worldDir = matVecMultN(this.player.orientation, this.player.forwardDir);
+        const movement = scaleN(worldDir, this.moveSpeed * dt);
+        this.player.position = addN(this.player.position, movement);
         this.checkPardonRadius();
       }
     } else {
       // Druuge linear thrust + damping
       if (this.isMovingForward) {
-        const worldDir = matVecMult(this.player.orientation, this.player.forwardDir);
+        const worldDir = matVecMultN(this.player.orientation, this.player.forwardDir);
         // v += a*dt
-        this.playerVelocity = add4(this.playerVelocity, scale4(worldDir, this.linearThrust * dt));
+        this.playerVelocity = addN(this.playerVelocity, scaleN(worldDir, this.linearThrust * dt));
         // Emit linear puffs at interval
         this.linearPuffCooldown -= dt;
         if (this.linearPuffCooldown <= 0) {
@@ -267,15 +296,15 @@ export class Game {
       }
       // Damping
       const linFactor = Math.exp(-this.linearDamp * dt);
-      this.playerVelocity = scale4(this.playerVelocity, linFactor);
+      this.playerVelocity = scaleN(this.playerVelocity, linFactor);
       // Clamp speed
-      const v2 = this.playerVelocity[0]**2 + this.playerVelocity[1]**2 + this.playerVelocity[2]**2 + this.playerVelocity[3]**2;
+      const v2 = this.playerVelocity.reduce((sum, v) => sum + v * v, 0);
       if (v2 > this.maxSpeed*this.maxSpeed) {
         const s = this.maxSpeed / Math.sqrt(v2);
-        this.playerVelocity = scale4(this.playerVelocity, s);
+        this.playerVelocity = scaleN(this.playerVelocity, s);
       }
       // Integrate position
-      this.player.position = add4(this.player.position, scale4(this.playerVelocity, dt));
+      this.player.position = addN(this.player.position, scaleN(this.playerVelocity, dt));
       this.checkPardonRadius();
       // Integrate angular velocity into orientation
       const angFactor = Math.exp(-this.angularDamp * dt);
@@ -284,15 +313,15 @@ export class Game {
         const [i, j] = this.planes[k];
         const angle = this.angularVel[k] * dt;
         if (angle !== 0) {
-          const rot = rotation4D(i, j, angle);
-          this.player.orientation = matMult(this.player.orientation, rot);
+          const rot = rotationND(this.dimensions, i, j, angle);
+          this.player.orientation = matMultN(this.player.orientation, rot);
         }
       }
     }
 
     // Enforce world bounds on player
     const pr = this.scatterplot.gridRange;
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < this.dimensions; i++) {
       if (this.player.position[i] < -pr) this.player.position[i] = -pr;
       if (this.player.position[i] >  pr) this.player.position[i] =  pr;
     }
@@ -389,14 +418,12 @@ export class Game {
     let pos;
     let attempts = 0;
     do {
-      pos = [
-        (Math.random() * 2 - 1) * R,
-        (Math.random() * 2 - 1) * R,
-        (Math.random() * 2 - 1) * R,
-        (Math.random() * 2 - 1) * R,
-      ];
+      pos = [];
+      for (let i = 0; i < this.dimensions; i++) {
+        pos.push((Math.random() * 2 - 1) * R);
+      }
       attempts++;
-    } while (distance4(this.player.position, pos) < this.pardonRadius * 8 && attempts < 50);
+    } while (distanceN(this.player.position, pos) < this.pardonRadius * 8 && attempts < 50);
     return new Turkey(pos);
   }
 
@@ -426,7 +453,7 @@ export class Game {
       this.distanceEl.textContent = '—';
       return;
     }
-    const d = distance4(this.player.position, target.position);
+    const d = distanceN(this.player.position, target.position);
     // Format with 2 decimals
     this.distanceEl.textContent = d.toFixed(2);
   }
