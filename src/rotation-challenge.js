@@ -7,14 +7,14 @@ import {
   identityNxN,
   rotationND,
   matMultN,
-  transposeN
+  transposeN,
+  geodesicDistanceSO
 } from './math4d.js';
 import { ScatterplotMatrix } from './scatterplot.js';
 import {
   generateSpherePath,
   sampleRandomRotation,
-  rotatePath,
-  computeAlignment
+  rotatePath
 } from './sphere-path.js';
 
 export class RotationChallenge {
@@ -36,10 +36,10 @@ export class RotationChallenge {
     this.rotationSpeed = Math.PI / 2; // rad/sec
     this.rotationPlanes = this.generateRotationPlanes(dimensions);
 
-    // Scoring
-    this.currentAlignment = 0;
-    this.bestAlignment = 0;
-    this.winThreshold = 0.98; // Need 98% alignment to win
+    // Scoring - geodesic distance on SO(n)
+    this.currentDistance = Infinity;
+    this.bestDistance = Infinity;
+    this.winThreshold = 0.1; // Geodesic distance threshold for winning (close to 0)
     this.hasWon = false;
 
     // Rendering
@@ -91,7 +91,8 @@ export class RotationChallenge {
     this.playerOrientation = identityNxN(this.dimensions);
 
     // Reset scoring
-    this.currentAlignment = 0;
+    this.currentDistance = Infinity;
+    this.bestDistance = Infinity;
     this.hasWon = false;
 
     this.updateUI();
@@ -112,11 +113,11 @@ export class RotationChallenge {
       this.playerOrientation = matMultN(this.playerOrientation, rotStep);
     }
 
-    // Compute current alignment
-    this.updateAlignment();
+    // Compute current geodesic distance
+    this.updateDistance();
 
-    // Check win condition
-    if (!this.hasWon && this.currentAlignment >= this.winThreshold) {
+    // Check win condition (distance below threshold)
+    if (!this.hasWon && this.currentDistance <= this.winThreshold) {
       this.hasWon = true;
       this.onWin();
     }
@@ -125,18 +126,16 @@ export class RotationChallenge {
   }
 
   /**
-   * Compute alignment between player's view and target
+   * Compute geodesic distance on SO(n) between player orientation and target rotation
    */
-  updateAlignment() {
-    // Transform target path by player's orientation to see how close it is to original
-    const playerRotatedTarget = rotatePath(this.targetPath, transposeN(this.playerOrientation));
+  updateDistance() {
+    // Compute geodesic distance: ||log(R^T Q)||_F
+    // where R = targetRotation, Q = playerOrientation
+    this.currentDistance = geodesicDistanceSO(this.targetRotation, this.playerOrientation);
 
-    // Compute alignment score
-    this.currentAlignment = computeAlignment(this.originalPath, playerRotatedTarget);
-
-    // Update best score
-    if (this.currentAlignment > this.bestAlignment) {
-      this.bestAlignment = this.currentAlignment;
+    // Update best score (minimum distance)
+    if (this.currentDistance < this.bestDistance) {
+      this.bestDistance = this.currentDistance;
     }
   }
 
@@ -167,21 +166,25 @@ export class RotationChallenge {
    */
   updateUI() {
     if (this.alignmentScoreEl) {
-      this.alignmentScoreEl.textContent = `${(this.currentAlignment * 100).toFixed(1)}%`;
+      this.alignmentScoreEl.textContent = this.currentDistance === Infinity
+        ? '—'
+        : this.currentDistance.toFixed(3);
     }
 
     if (this.bestScoreEl) {
-      this.bestScoreEl.textContent = `${(this.bestAlignment * 100).toFixed(1)}%`;
+      this.bestScoreEl.textContent = this.bestDistance === Infinity
+        ? '—'
+        : this.bestDistance.toFixed(3);
     }
 
     if (this.challengeStatusEl) {
       if (this.hasWon) {
         this.challengeStatusEl.textContent = '🎉 Perfect Alignment!';
         this.challengeStatusEl.style.color = '#00ff00';
-      } else if (this.currentAlignment >= 0.90) {
+      } else if (this.currentDistance <= 0.2) {
         this.challengeStatusEl.textContent = 'Very Close!';
         this.challengeStatusEl.style.color = '#ffff00';
-      } else if (this.currentAlignment >= 0.70) {
+      } else if (this.currentDistance <= 0.5) {
         this.challengeStatusEl.textContent = 'Getting Warmer...';
         this.challengeStatusEl.style.color = '#ff9900';
       } else {

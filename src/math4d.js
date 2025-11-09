@@ -283,3 +283,107 @@ export function lerpMatrix(a, b, t) {
   }
   return result;
 }
+
+/**
+ * Matrix subtraction for NxN matrices
+ */
+export function matSubtractN(a, b) {
+  const n = a.length;
+  const result = [];
+  for (let i = 0; i < n; i++) {
+    result[i] = [];
+    for (let j = 0; j < n; j++) {
+      result[i][j] = a[i][j] - b[i][j];
+    }
+  }
+  return result;
+}
+
+/**
+ * Matrix addition for NxN matrices
+ */
+export function matAddN(a, b) {
+  const n = a.length;
+  const result = [];
+  for (let i = 0; i < n; i++) {
+    result[i] = [];
+    for (let j = 0; j < n; j++) {
+      result[i][j] = a[i][j] + b[i][j];
+    }
+  }
+  return result;
+}
+
+/**
+ * Scale matrix by scalar
+ */
+export function matScaleN(mat, s) {
+  const n = mat.length;
+  const result = [];
+  for (let i = 0; i < n; i++) {
+    result[i] = [];
+    for (let j = 0; j < n; j++) {
+      result[i][j] = mat[i][j] * s;
+    }
+  }
+  return result;
+}
+
+/**
+ * Frobenius norm of a matrix: sqrt(sum of squares of all elements)
+ */
+export function frobeniusNorm(mat) {
+  let sum = 0;
+  for (let i = 0; i < mat.length; i++) {
+    for (let j = 0; j < mat[i].length; j++) {
+      sum += mat[i][j] * mat[i][j];
+    }
+  }
+  return Math.sqrt(sum);
+}
+
+/**
+ * Matrix logarithm for rotation matrices in SO(n)
+ * Uses truncated series expansion: log(M) = sum_{k=1}^N (-1)^(k+1) (M - I)^k / k
+ * This converges for rotation matrices and gives a skew-symmetric result
+ */
+export function matrixLogN(mat, terms = 8) {
+  const n = mat.length;
+  const I = identityNxN(n);
+  const A = matSubtractN(mat, I); // M - I
+
+  // Compute powers of A and accumulate the series
+  let result = matScaleN(A, 1); // First term: (M - I)
+  let power = A; // Current power of A
+
+  for (let k = 2; k <= terms; k++) {
+    power = matMultN(power, A); // A^k
+    const term = matScaleN(power, Math.pow(-1, k + 1) / k);
+    result = matAddN(result, term);
+  }
+
+  return result;
+}
+
+/**
+ * Geodesic distance on SO(n) between two rotation matrices
+ * Computes ||log(R^T Q)||_F where ||·||_F is the Frobenius norm
+ *
+ * @param {Array} R - First rotation matrix (target rotation)
+ * @param {Array} Q - Second rotation matrix (current rotation)
+ * @returns {number} Geodesic distance (0 means aligned, increases with misalignment)
+ */
+export function geodesicDistanceSO(R, Q) {
+  // Compute R^T
+  const RT = transposeN(R);
+
+  // Compute relative rotation: R^T Q
+  const relativeRotation = matMultN(RT, Q);
+
+  // Compute matrix logarithm
+  const logMat = matrixLogN(relativeRotation);
+
+  // Compute Frobenius norm
+  return frobeniusNorm(logMat);
+}
+
