@@ -39,15 +39,16 @@ export class Turkey {
     const cos = Math.cos(this.rotation);
     const sin = Math.sin(this.rotation);
 
-    // Head offset: ~6 units in rotated direction (matching sprite offset)
+    // Head offset: positioned to be ~6 pixels away when projected
+    // With viewRange=4 and typical innerSize~200px: 6px ≈ 0.24 world units
     this.headOffset = new Array(this.position.length).fill(0);
-    this.headOffset[0] = cos * 0.06;  // Scale down from pixels to world units
-    this.headOffset[1] = sin * 0.06;
+    this.headOffset[0] = cos * 0.24;
+    this.headOffset[1] = sin * 0.24;
 
-    // Nose offset: ~4 units in rotated direction (between body and head)
+    // Nose offset: positioned to be ~4 pixels away when projected
     this.noseOffset = new Array(this.position.length).fill(0);
-    this.noseOffset[0] = cos * 0.04;
-    this.noseOffset[1] = sin * 0.04;
+    this.noseOffset[0] = cos * 0.16;
+    this.noseOffset[1] = sin * 0.16;
   }
 
   /**

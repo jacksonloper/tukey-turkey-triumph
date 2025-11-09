@@ -572,12 +572,12 @@ export class ScatterplotMatrix {
       const sin = Math.sin(rotation);
 
       turkey.headOffset = new Array(turkey.position.length).fill(0);
-      turkey.headOffset[0] = cos * 0.06;
-      turkey.headOffset[1] = sin * 0.06;
+      turkey.headOffset[0] = cos * 0.24;
+      turkey.headOffset[1] = sin * 0.24;
 
       turkey.noseOffset = new Array(turkey.position.length).fill(0);
-      turkey.noseOffset[0] = cos * 0.04;
-      turkey.noseOffset[1] = sin * 0.04;
+      turkey.noseOffset[0] = cos * 0.16;
+      turkey.noseOffset[1] = sin * 0.16;
     }
 
     // Calculate world positions for each turkey part
