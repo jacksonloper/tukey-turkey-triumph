@@ -399,18 +399,19 @@ export class ScatterplotMatrix {
 
     if (ui.shipType === 'druuge') {
       // Druuge ship: elongated along dimension 0 (forward direction in local space)
-      // If this cell involves dim 0, show elongated rectangle; otherwise show square cross-section
+      // If this cell involves dim 0, show elongated shape with cone; otherwise show square cross-section
       const f = ui.forwardDir || [1,0,0,0];
       const involvesDim0 = (dimI === 0 || dimJ === 0);
 
       ctx.save();
       ctx.translate(px, py);
+      ctx.globalAlpha = 0.85; // Semi-transparent
       ctx.fillStyle = '#ffd166';
       ctx.strokeStyle = '#ff9f1c';
       ctx.lineWidth = 2;
 
       if (involvesDim0) {
-        // Elongated view: show rectangle oriented by forward direction
+        // Elongated view: show cone-tipped shape oriented by forward direction
         const vx = f[dimJ] || 0;
         const vy = f[dimI] || 0;
         let ang = 0;
@@ -418,10 +419,21 @@ export class ScatterplotMatrix {
           ang = Math.atan2(-vy, vx);
         }
         ctx.rotate(ang);
-        // width x height (length along x)
-        const w = 18, h = 8;
+
+        // Draw cone-tipped ship (rectangle + triangle at front)
+        const bodyLen = 12, bodyHeight = 8, coneLen = 6;
         ctx.beginPath();
-        ctx.rect(-w/2, -h/2, w, h);
+        // Main body rectangle
+        ctx.rect(-bodyLen/2, -bodyHeight/2, bodyLen, bodyHeight);
+        ctx.fill();
+        ctx.stroke();
+
+        // Front cone
+        ctx.beginPath();
+        ctx.moveTo(bodyLen/2, -bodyHeight/2); // top of body
+        ctx.lineTo(bodyLen/2 + coneLen, 0);    // cone tip
+        ctx.lineTo(bodyLen/2, bodyHeight/2);   // bottom of body
+        ctx.closePath();
         ctx.fill();
         ctx.stroke();
       } else {
@@ -435,6 +447,8 @@ export class ScatterplotMatrix {
       ctx.restore();
     } else {
       // Aerilou: blue dot
+      ctx.save();
+      ctx.globalAlpha = 0.85; // Semi-transparent
       ctx.fillStyle = '#00d4ff';
       ctx.strokeStyle = '#00ffff';
       ctx.lineWidth = 3;
@@ -442,6 +456,7 @@ export class ScatterplotMatrix {
       ctx.arc(px, py, 6, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
+      ctx.restore();
     }
   }
 
@@ -488,64 +503,80 @@ export class ScatterplotMatrix {
       } else if (p.type === 'angular') {
         const plane = p.plane || [-1,-1];
         const a = plane[0], b = plane[1];
-        // Draw only on the appropriate frame(s)
-        if (!((dimI === a && dimJ === b) || (dimI === b && dimJ === a))) { ctx.restore(); continue; }
 
-        // Position angular puffs based on whether we're showing elongated or cross-section view
-        if (involvesDim0) {
-          // Elongated view: use forward and left vectors
-          let tfx = fx, tfy = fy;
-          if (tfx === 0 && tfy === 0) { tfx = 1; tfy = 0; }
-          const lx = -tfy; // left vector (perpendicular)
-          const ly = tfx;
+        // Draw in any cell that involves either rotation dimension
+        const involvesRotation = (dimI === a || dimI === b || dimJ === a || dimJ === b);
+        if (!involvesRotation) { ctx.restore(); continue; }
 
-          const front = 12; // px along forward
-          const side = 10;  // px along left/right
-          const dir = -(p.dir || 1); // flipped to match physical torque direction
+        // Check if this is the exact rotation plane
+        const isRotationPlane = ((dimI === a && dimJ === b) || (dimI === b && dimJ === a));
 
-          // For positive dir: left puff forward-left, right puff back-right
-          // For negative dir: left puff back-left, right puff forward-right
-          const leftX  = cx + (dir > 0 ? (tfx*front + lx*side) : (tfx*(-front) + lx*side));
-          const leftY  = cy + (dir > 0 ? (tfy*front + ly*side) : (tfy*(-front) + ly*side));
-          const rightX = cx + (dir > 0 ? (tfx*(-front) - lx*side) : (tfx*front - lx*side));
-          const rightY = cy + (dir > 0 ? (tfy*(-front) - ly*side) : (tfy*front - ly*side));
+        if (isRotationPlane) {
+          // This is the exact plane where rotation happens - show diagonal puffs
+          if (involvesDim0) {
+            // Elongated view: use forward and left vectors
+            let tfx = fx, tfy = fy;
+            if (tfx === 0 && tfy === 0) { tfx = 1; tfy = 0; }
+            const lx = -tfy; // left vector (perpendicular)
+            const ly = tfx;
 
-          ctx.beginPath();
-          ctx.arc(leftX, leftY, 4.5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.arc(rightX, rightY, 4.5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-        } else {
-          // Cross-section view: show puffs at diagonal corners
-          // For angular momentum, puffs should be offset diagonally to show rotation
-          const offset = 7;  // px from center in each direction
-          const dir = -(p.dir || 1);
+            const front = 12; // px along forward
+            const side = 10;  // px along left/right
+            const dir = -(p.dir || 1); // flipped to match physical torque direction
 
-          // Place puffs at opposite diagonal corners based on rotation direction
-          // Positive dir: top-right and bottom-left
-          // Negative dir: top-left and bottom-right
-          if (dir > 0) {
+            // For positive dir: left puff forward-left, right puff back-right
+            // For negative dir: left puff back-left, right puff forward-right
+            const leftX  = cx + (dir > 0 ? (tfx*front + lx*side) : (tfx*(-front) + lx*side));
+            const leftY  = cy + (dir > 0 ? (tfy*front + ly*side) : (tfy*(-front) + ly*side));
+            const rightX = cx + (dir > 0 ? (tfx*(-front) - lx*side) : (tfx*front - lx*side));
+            const rightY = cy + (dir > 0 ? (tfy*(-front) - ly*side) : (tfy*front - ly*side));
+
             ctx.beginPath();
-            ctx.arc(cx + offset, cy - offset, 4.5, 0, Math.PI * 2); // top-right
+            ctx.arc(leftX, leftY, 4.5, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
             ctx.beginPath();
-            ctx.arc(cx - offset, cy + offset, 4.5, 0, Math.PI * 2); // bottom-left
+            ctx.arc(rightX, rightY, 4.5, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
           } else {
-            ctx.beginPath();
-            ctx.arc(cx - offset, cy - offset, 4.5, 0, Math.PI * 2); // top-left
-            ctx.fill();
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(cx + offset, cy + offset, 4.5, 0, Math.PI * 2); // bottom-right
-            ctx.fill();
-            ctx.stroke();
+            // Cross-section view: show puffs at diagonal corners
+            const offset = 7;  // px from center in each direction
+            const dir = -(p.dir || 1);
+
+            // Place puffs at opposite diagonal corners based on rotation direction
+            if (dir > 0) {
+              ctx.beginPath();
+              ctx.arc(cx + offset, cy - offset, 4.5, 0, Math.PI * 2); // top-right
+              ctx.fill();
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.arc(cx - offset, cy + offset, 4.5, 0, Math.PI * 2); // bottom-left
+              ctx.fill();
+              ctx.stroke();
+            } else {
+              ctx.beginPath();
+              ctx.arc(cx - offset, cy - offset, 4.5, 0, Math.PI * 2); // top-left
+              ctx.fill();
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.arc(cx + offset, cy + offset, 4.5, 0, Math.PI * 2); // bottom-right
+              ctx.fill();
+              ctx.stroke();
+            }
           }
+        } else {
+          // Edge-on view of the rotation - puffs appear inline or less prominently
+          const offset = 8;  // px from center
+          // Show puffs on opposite sides (simplified view)
+          ctx.beginPath();
+          ctx.arc(cx - offset, cy, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(cx + offset, cy, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
         }
       }
       ctx.restore();
