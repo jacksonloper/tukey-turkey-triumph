@@ -31,7 +31,7 @@
             This game demonstrates what John W. Tukey called a "draughtsman's display": a matrix of pairwise scatterplots. You navigate $n$-dimensional Euclidean space $\mathbb{R}^n$ (with $n \in \{2,3,4,5\}$) while viewing all ${n \choose 2}$ orthogonal projections simultaneously in an $n \times n$ matrix.
           </p>
           <p>
-            <strong>Mathematical Structure:</strong> At each moment, your position is $\mathbf{p} \in \mathbb{R}^n$ and your orientation is an orthogonal matrix $R \in \text{SO}(n)$. Cell $(i,j)$ displays the 2D projection $\pi_{ij}: \mathbb{R}^n \to \mathbb{R}^2$ defined by $\pi_{ij}(\mathbf{x}) = (x_j, x_i)$ where $\mathbf{x} = R^T(\mathbf{p}_{\text{world}} - \mathbf{p})$ transforms world coordinates into your oriented local frame. The cardinal grid remains world-aligned, so rotating your basis $R$ reveals how the $n$-dimensional structure projects into each 2D plane.
+            <strong>Mathematical Structure:</strong> At each moment, your position is $\mathbf{p} \in \mathbb{R}^n$ and your orientation is an orthogonal matrix $R \in \text{SO}(n)$. Forward motion always proceeds in the direction of the first column of $R$, denoted $\mathbf{r}_1$. Cell $(i,j)$ displays the 2D projection $\pi_{ij}: \mathbb{R}^n \to \mathbb{R}^2$ defined by $\pi_{ij}(\mathbf{x}) = (x_j, x_i)$ where $\mathbf{x} = R^T(\mathbf{p}_{\text{world}} - \mathbf{p})$ transforms world coordinates into your oriented local frame. The cardinal grid remains world-aligned, so rotating your basis $R$ reveals how the $n$-dimensional structure projects into each 2D plane.
           </p>
           <p>
             The matrix‑of‑scatterplots idea was originated by J. A. Hartigan in
