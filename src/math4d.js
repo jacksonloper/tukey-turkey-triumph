@@ -344,14 +344,14 @@ export function frobeniusNorm(mat) {
 
 /**
  * Distance metric on SO(n) between two rotation matrices
- * Computes ||R^T Q - I||_F which is a valid distance metric on SO(n)
- * This is simpler and more robust than the geodesic distance using matrix logarithm
+ * Computes ||R^T Q - I||_F (Frobenius norm of relative rotation minus identity)
+ * This is a valid distance metric but NOT the geodesic distance
  *
  * @param {Array} R - First rotation matrix (target rotation)
  * @param {Array} Q - Second rotation matrix (current rotation)
  * @returns {number} Distance (0 means aligned, increases with misalignment)
  */
-export function geodesicDistanceSO(R, Q) {
+export function rotationDistanceSO(R, Q) {
   const n = R.length;
 
   // Compute R^T
@@ -424,13 +424,14 @@ function gramSchmidt(mat) {
 
 /**
  * Interpolation on SO(n) using linear interpolation + orthonormalization
- * This is more robust than geodesic interpolation for arbitrary rotations
+ * NOT a geodesic interpolation - just lerp + Gram-Schmidt
+ * Works robustly for arbitrary rotations unlike geodesic methods
  * @param {Array} A - Start rotation matrix (n×n)
  * @param {Array} B - End rotation matrix (n×n)
  * @param {number} t - Interpolation parameter (0 to 1)
  * @returns {Array} Interpolated rotation matrix
  */
-export function geodesicInterpSO(A, B, t) {
+export function interpRotationSO(A, B, t) {
   const n = A.length;
 
   // Linear interpolation: (1-t)A + tB

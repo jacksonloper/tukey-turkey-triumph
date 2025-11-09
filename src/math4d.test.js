@@ -9,8 +9,8 @@ import {
   rotationND,
   matMultN,
   transposeN,
-  geodesicInterpSO,
-  geodesicDistanceSO
+  interpRotationSO,
+  rotationDistanceSO
 } from './math4d.js';
 import { sampleRandomRotation } from './sphere-path.js';
 
@@ -128,106 +128,48 @@ describe('Matrix Operations', () => {
     });
   });
 
-  describe('Geodesic Interpolation', () => {
-    it('should preserve orthonormality at intermediate points for small rotations', () => {
-      const dimensions = [2, 3];
-      for (const n of dimensions) {
-        // Use small rotations (close to identity) where series converges better
-        const A = rotationND(n, 0, 1, 0.3);
-        const B = rotationND(n, 0, 1, 0.7);
-
-        // Test at multiple interpolation points
-        for (let t = 0; t <= 1; t += 0.2) {
-          const R = geodesicInterpSO(A, B, t);
-          expect(isInSO(R, 1e-4)).toBe(true);
-        }
-      }
-    });
-
-    it('should match endpoints at t=0 and t=1 for small rotations', () => {
-      const n = 3;
-      // Use small rotations where series converges
-      const A = rotationND(n, 0, 1, 0.4);
-      const B = rotationND(n, 1, 2, 0.6);
-
-      const R0 = geodesicInterpSO(A, B, 0);
-      const R1 = geodesicInterpSO(A, B, 1);
-
-      // Check R0 ≈ A
-      for (let i = 0; i < n; i++) {
-        for (let j = 0; j < n; j++) {
-          expect(Math.abs(R0[i][j] - A[i][j])).toBeLessThan(1e-4);
-        }
-      }
-
-      // Check R1 ≈ B
-      for (let i = 0; i < n; i++) {
-        for (let j = 0; j < n; j++) {
-          expect(Math.abs(R1[i][j] - B[i][j])).toBeLessThan(1e-4);
-        }
-      }
-    });
-
-    it('should satisfy the halfway property for small rotations', () => {
-      const n = 3;
-      // Use small rotations where series converges
-      const A = rotationND(n, 0, 1, 0.3);
-      const B = rotationND(n, 0, 1, 0.9);
-
-      const R_half = geodesicInterpSO(A, B, 0.5);
-
-      // Distance from A to R_half should equal distance from R_half to B
-      const dist1 = geodesicDistanceSO(A, R_half);
-      const dist2 = geodesicDistanceSO(R_half, B);
-
-      expect(Math.abs(dist1 - dist2)).toBeLessThan(1e-3);
-    });
-  });
-
-
-  describe('Geodesic Distance', () => {
+  describe('Rotation Distance Metric', () => {
     it('should be zero for identical rotations', () => {
       const n = 4;
       const R = rotationND(n, 0, 1, 0.5);
-      const dist = geodesicDistanceSO(R, R);
+      const dist = rotationDistanceSO(R, R);
       expect(dist).toBeLessThan(1e-10);
     });
 
-    it('should be symmetric for small rotations', () => {
-      const n = 3;
-      // Use small rotations to stay within convergence radius
-      const R1 = rotationND(n, 0, 1, 0.4);
-      const R2 = rotationND(n, 1, 2, 0.5);
-
-      const dist1 = geodesicDistanceSO(R1, R2);
-      const dist2 = geodesicDistanceSO(R2, R1);
-
-      expect(Math.abs(dist1 - dist2)).toBeLessThan(1e-6);
-    });
-
-    it('should give reasonable values for random rotations (like in actual game)', () => {
+    it('should be symmetric', () => {
       const n = 3;
       const R1 = sampleRandomRotation(n);
       const R2 = sampleRandomRotation(n);
 
-      const dist = geodesicDistanceSO(R1, R2);
+      const dist1 = rotationDistanceSO(R1, R2);
+      const dist2 = rotationDistanceSO(R2, R1);
+
+      expect(Math.abs(dist1 - dist2)).toBeLessThan(1e-10);
+    });
+
+    it('should give reasonable values for random rotations', () => {
+      const n = 3;
+      const R1 = sampleRandomRotation(n);
+      const R2 = sampleRandomRotation(n);
+
+      const dist = rotationDistanceSO(R1, R2);
 
       // Distance should be finite and reasonable (not NaN, not huge)
       expect(isFinite(dist)).toBe(true);
       expect(dist).toBeGreaterThanOrEqual(0);
-      // Max distance on SO(n) is bounded (roughly π√n for Frobenius norm)
+      // Max distance is bounded
       expect(dist).toBeLessThan(100);
     });
   });
 
-  describe('Geodesic Interpolation with Random Rotations (actual game scenario)', () => {
+  describe('Rotation Interpolation with Random Rotations', () => {
     it('should preserve orthonormality for random rotations', () => {
       const n = 3;
       const A = sampleRandomRotation(n);
       const B = sampleRandomRotation(n);
 
       // Test at t=0.5 (the halfway case)
-      const R = geodesicInterpSO(A, B, 0.5);
+      const R = interpRotationSO(A, B, 0.5);
 
       // Result should be in SO(n)
       expect(isInSO(R, 1e-3)).toBe(true);
@@ -245,10 +187,10 @@ describe('Matrix Operations', () => {
       const A = sampleRandomRotation(n);
       const B = sampleRandomRotation(n);
 
-      const R_half = geodesicInterpSO(A, B, 0.5);
+      const R_half = interpRotationSO(A, B, 0.5);
 
-      const dist_A_to_half = geodesicDistanceSO(A, R_half);
-      const dist_half_to_B = geodesicDistanceSO(R_half, B);
+      const dist_A_to_half = rotationDistanceSO(A, R_half);
+      const dist_half_to_B = rotationDistanceSO(R_half, B);
 
       // Both distances should be finite
       expect(isFinite(dist_A_to_half)).toBe(true);

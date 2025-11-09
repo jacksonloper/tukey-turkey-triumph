@@ -8,8 +8,8 @@ import {
   rotationND,
   matMultN,
   transposeN,
-  geodesicDistanceSO,
-  geodesicInterpSO
+  rotationDistanceSO,
+  interpRotationSO
 } from './math4d.js';
 import { ScatterplotMatrix } from './scatterplot.js';
 import {
@@ -123,7 +123,7 @@ export class RotationChallenge {
         // Smooth interpolation using ease-in-out
         const t = this.easeInOutCubic(this.halfwayProgress);
         // Use geodesic interpolation to preserve orthonormality
-        this.playerOrientation = geodesicInterpSO(
+        this.playerOrientation = interpRotationSO(
           this.halfwayStartOrientation,
           this.halfwayTargetOrientation,
           t
@@ -167,7 +167,7 @@ export class RotationChallenge {
   updateDistance() {
     // Compute geodesic distance: ||log(R^T Q)||_F
     // where R = targetRotation, Q = playerOrientation
-    this.currentDistance = geodesicDistanceSO(this.targetRotation, this.playerOrientation);
+    this.currentDistance = rotationDistanceSO(this.targetRotation, this.playerOrientation);
 
     // Update best score (minimum distance)
     if (this.currentDistance < this.bestDistance) {
