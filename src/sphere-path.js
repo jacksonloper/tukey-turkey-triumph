@@ -11,9 +11,10 @@ import { vecN, scaleN } from './math4d.js';
  * @param {number} dimensions - Ambient dimension n (path lives on S^(n-1))
  * @param {number} numPoints - Number of points to sample along the path
  * @param {number} numFrequencies - Number of Fourier modes (controls smoothness)
+ * @param {number} radius - Radius of the sphere (default 3.0 for visibility)
  * @returns {Array} Array of points on the sphere
  */
-export function generateSpherePath(dimensions, numPoints = 100, numFrequencies = 3) {
+export function generateSpherePath(dimensions, numPoints = 100, numFrequencies = 3, radius = 3.0) {
   // Generate random Fourier coefficients for each dimension
   const coefficients = [];
   for (let d = 0; d < dimensions; d++) {
@@ -42,9 +43,9 @@ export function generateSpherePath(dimensions, numPoints = 100, numFrequencies =
       point.push(value);
     }
 
-    // Normalize to project onto unit sphere
+    // Normalize to project onto unit sphere, then scale to desired radius
     const norm = Math.sqrt(point.reduce((sum, x) => sum + x * x, 0));
-    const normalized = point.map(x => x / norm);
+    const normalized = point.map(x => (x / norm) * radius);
 
     path.push(normalized);
   }

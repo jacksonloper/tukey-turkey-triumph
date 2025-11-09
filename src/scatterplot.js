@@ -282,8 +282,10 @@ export class ScatterplotMatrix {
       this.drawTurkey(x, y, turkey, row, col);
     });
 
-    // Draw player
-    this.drawPlayer(x, y, playerLocal, row, col, ui);
+    // Draw player (unless explicitly disabled)
+    if (ui.showPlayer !== false) {
+      this.drawPlayer(x, y, playerLocal, row, col, ui);
+    }
 
     // Draw thrust/torque puffs
     this.drawPuffs(x, y, row, col, ui);
