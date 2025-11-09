@@ -5,27 +5,36 @@
 import { vecN, scaleN } from './math4d.js';
 
 /**
- * Generate a smooth random path that stays inside a sphere (ball)
- * Uses a Fourier series approach with amplitude control to keep points within radius
+ * Generate a smooth random path
+ * For 2D: path stays inside ball (more freedom of movement)
+ * For 3D+: path on sphere surface (better visibility in higher dimensions)
  *
- * @param {number} dimensions - Ambient dimension n (path lives in n-dimensional ball)
+ * @param {number} dimensions - Ambient dimension n
  * @param {number} numPoints - Number of points to sample along the path
  * @param {number} numFrequencies - Number of Fourier modes (controls smoothness)
- * @param {number} radius - Radius of the ball (default 3.0 for visibility)
- * @returns {Array} Array of points inside the sphere
+ * @param {number} radius - Radius (default 3.0 for visibility)
+ * @returns {Array} Array of points
  */
 export function generateSpherePath(dimensions, numPoints = 100, numFrequencies = 3, radius = 3.0) {
+  const onSurface = dimensions >= 3; // Use surface for 3D and higher
+
   // Generate random Fourier coefficients for each dimension
-  // Use smaller coefficients to keep paths naturally within the ball
-  const maxRadius = radius * 0.7; // Keep path comfortably inside
   const coefficients = [];
   for (let d = 0; d < dimensions; d++) {
     const cosCoeffs = [];
     const sinCoeffs = [];
     for (let k = 0; k <= numFrequencies; k++) {
-      const amplitude = maxRadius / (numFrequencies * Math.sqrt(dimensions));
-      cosCoeffs.push((Math.random() - 0.5) * 2 * amplitude);
-      sinCoeffs.push((Math.random() - 0.5) * 2 * amplitude);
+      if (onSurface) {
+        // For sphere surface, use larger coefficients
+        cosCoeffs.push((Math.random() - 0.5) * 2);
+        sinCoeffs.push((Math.random() - 0.5) * 2);
+      } else {
+        // For inside ball, use controlled amplitude
+        const maxRadius = radius * 0.7;
+        const amplitude = maxRadius / (numFrequencies * Math.sqrt(dimensions));
+        cosCoeffs.push((Math.random() - 0.5) * 2 * amplitude);
+        sinCoeffs.push((Math.random() - 0.5) * 2 * amplitude);
+      }
     }
     coefficients.push({ cos: cosCoeffs, sin: sinCoeffs });
   }
@@ -46,22 +55,56 @@ export function generateSpherePath(dimensions, numPoints = 100, numFrequencies =
       point.push(value);
     }
 
-    // If point exceeds radius, scale it down to fit within ball
+    // Normalize based on strategy
     const norm = Math.sqrt(point.reduce((sum, x) => sum + x * x, 0));
-    if (norm > radius) {
-      const scale = radius / norm;
-      point.forEach((val, idx) => point[idx] = val * scale);
+    if (onSurface) {
+      // Project onto sphere surface
+      const normalized = point.map(x => (x / norm) * radius);
+      path.push(normalized);
+    } else {
+      // Keep inside ball, clip if needed
+      if (norm > radius) {
+        const scale = radius / norm;
+        point.forEach((val, idx) => point[idx] = val * scale);
+      }
+      path.push(point);
     }
-
-    path.push(point);
   }
 
   return path;
 }
 
 /**
+ * Compute determinant of a matrix
+ * Uses cofactor expansion for general n
+ */
+function determinant(mat) {
+  const n = mat.length;
+
+  if (n === 1) return mat[0][0];
+  if (n === 2) return mat[0][0] * mat[1][1] - mat[0][1] * mat[1][0];
+
+  // For n >= 3, use cofactor expansion along first row
+  let det = 0;
+  for (let j = 0; j < n; j++) {
+    // Create minor matrix (remove row 0, column j)
+    const minor = [];
+    for (let i = 1; i < n; i++) {
+      const row = [];
+      for (let k = 0; k < n; k++) {
+        if (k !== j) row.push(mat[i][k]);
+      }
+      minor.push(row);
+    }
+    const cofactor = Math.pow(-1, j) * mat[0][j] * determinant(minor);
+    det += cofactor;
+  }
+  return det;
+}
+
+/**
  * Sample a random rotation matrix from SO(n) using the Haar measure
- * Uses QR decomposition with sign correction for uniform sampling
+ * Uses QR decomposition with determinant check for proper rotations
  *
  * @param {number} n - Dimension
  * @returns {Array} n×n rotation matrix
@@ -83,7 +126,6 @@ export function sampleRandomRotation(n) {
 
   // QR decomposition using Gram-Schmidt
   const Q = [];
-  const R = [];
 
   for (let j = 0; j < n; j++) {
     // Start with column j of A
@@ -102,35 +144,17 @@ export function sampleRandomRotation(n) {
     const norm = Math.sqrt(v.reduce((sum, x) => sum + x * x, 0));
     const q = v.map(x => x / norm);
 
-    // Add to Q matrix (store as columns)
+    // Add to Q matrix (store as rows)
     for (let i = 0; i < n; i++) {
       if (!Q[i]) Q[i] = [];
       Q[i][j] = q[i];
     }
-
-    // Compute R entries
-    if (!R[j]) R[j] = [];
-    for (let i = 0; i <= j; i++) {
-      if (i === j) {
-        R[j][j] = norm;
-      } else {
-        const Acol = [];
-        for (let k = 0; k < n; k++) Acol.push(A[k][j]);
-        const Qcol = [];
-        for (let k = 0; k < n; k++) Qcol.push(Q[k][i]);
-        R[i][j] = Acol.reduce((sum, val, k) => sum + val * Qcol[k], 0);
-      }
-    }
   }
 
-  // Correct signs to ensure det(Q) = 1 (proper rotation, not reflection)
-  // Multiply last column by sign of product of diagonal of R
-  let diagSign = 1;
-  for (let i = 0; i < n; i++) {
-    diagSign *= Math.sign(R[i][i]);
-  }
-
-  if (diagSign < 0) {
+  // Ensure det(Q) = 1 (proper rotation, not reflection)
+  const det = determinant(Q);
+  if (det < 0) {
+    // Flip last column to make det = 1
     for (let i = 0; i < n; i++) {
       Q[i][n - 1] *= -1;
     }
