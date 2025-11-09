@@ -151,12 +151,13 @@ export class RotationChallenge {
     };
 
     // Render both paths
-    // Original path in orange, target path in cyan
+    // Original path (orange) stays fixed in world space
+    // Target path (cyan) rotates with player orientation
     this.scatterplot.render(player, [], {
       showPlayer: false, // Don't show the central dot
       paths: [
-        { points: this.originalPath, color: 'rgba(255, 140, 0, 0.8)', label: 'original' },
-        { points: this.targetPath, color: 'rgba(0, 255, 255, 0.8)', label: 'target' }
+        { points: this.originalPath, color: 'rgba(255, 140, 0, 0.8)', label: 'original', fixed: true },
+        { points: this.targetPath, color: 'rgba(0, 255, 255, 0.8)', label: 'target', fixed: false }
       ]
     });
   }

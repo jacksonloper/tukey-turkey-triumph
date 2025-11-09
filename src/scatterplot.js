@@ -216,14 +216,27 @@ export class ScatterplotMatrix {
     }) : [];
 
     // Transform paths to oriented frame (for rotation challenge)
-    const pathsLocal = ui.paths ? ui.paths.map(pathData => ({
-      points: pathData.points.map(point => {
-        const relativePos = point.map((v, i) => v - player.position[i]);
-        return matVecMultN(orientationInverse, relativePos);
-      }),
-      color: pathData.color,
-      label: pathData.label
-    })) : [];
+    // Some paths can be marked as "fixed" to stay in world coordinates
+    const pathsLocal = ui.paths ? ui.paths.map(pathData => {
+      if (pathData.fixed) {
+        // Fixed paths: don't transform by player orientation
+        return {
+          points: pathData.points.map(point => point.map((v, i) => v - player.position[i])),
+          color: pathData.color,
+          label: pathData.label
+        };
+      } else {
+        // Rotating paths: transform by player orientation
+        return {
+          points: pathData.points.map(point => {
+            const relativePos = point.map((v, i) => v - player.position[i]);
+            return matVecMultN(orientationInverse, relativePos);
+          }),
+          color: pathData.color,
+          label: pathData.label
+        };
+      }
+    }) : [];
 
     // Draw each cell in the matrix
     for (let row = 0; row < this.dimensions; row++) {
