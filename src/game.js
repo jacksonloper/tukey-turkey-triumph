@@ -57,7 +57,7 @@ export class Game {
     this.rotPuffCooldown = 0;
 
     // Game settings
-    this.pardonRadius = 0.5; // Distance to pardon a turkey (easier)
+    this.pardonRadius = 1.5; // Distance to pardon a turkey (3x easier)
 
     // Turkeys: only one active at a time
     this.turkeys = createTurkeyFlock(1);

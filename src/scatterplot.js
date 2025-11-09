@@ -48,10 +48,35 @@ export class ScatterplotMatrix {
   }
 
   resize() {
-    // Account for app padding (2rem), play-area padding (24px), border (4px), and safety margin
-    const size = Math.min(800, window.innerWidth - 80);
-    this.canvas.width = size;
-    this.canvas.height = size;
+    // Calculate available width dynamically based on viewport
+    // Mobile (< 600px): app padding 0.5rem, play-area padding 8px, border 2px
+    // Desktop: app padding 1rem, play-area padding 12px, border 2px
+    const isMobile = window.innerWidth < 600;
+    const appPadding = isMobile ? 16 : 32; // 0.5rem or 1rem * 2 sides
+    const playAreaPadding = isMobile ? 16 : 24; // 8px or 12px * 2 sides
+    const playAreaBorder = 4; // 2px * 2 sides
+    const totalPadding = appPadding + playAreaPadding + playAreaBorder;
+
+    const size = Math.min(800, window.innerWidth - totalPadding);
+
+    // Account for device pixel ratio for high-DPI displays
+    const dpr = window.devicePixelRatio || 1;
+
+    // Set canvas internal resolution (scaled by DPR)
+    this.canvas.width = size * dpr;
+    this.canvas.height = size * dpr;
+
+    // Set canvas CSS size (display size)
+    this.canvas.style.width = size + 'px';
+    this.canvas.style.height = size + 'px';
+
+    // IMPORTANT: Reset transform before scaling to avoid compounding
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // Scale context to match DPR
+    this.ctx.scale(dpr, dpr);
+
+    // Store the display size for calculations
+    this.displaySize = size;
     this.cellSize = (size - this.padding * 2) / this.dimensions;
   }
 
@@ -76,10 +101,11 @@ export class ScatterplotMatrix {
 
   getCellFromMouse(e) {
     const rect = this.canvas.getBoundingClientRect();
+    // Convert from screen coordinates to canvas display coordinates
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Determine which cell was clicked
+    // Determine which cell was clicked (using display size, not internal canvas size)
     const col = Math.floor((x - this.padding) / this.cellSize);
     const row = Math.floor((y - this.padding) / this.cellSize);
 
@@ -135,7 +161,9 @@ export class ScatterplotMatrix {
    */
   render(player, turkeys, ui = {}) {
     const ctx = this.ctx;
-    const { width, height } = this.canvas;
+    // Use displaySize instead of canvas.width/height (which are DPR-scaled)
+    const width = this.displaySize;
+    const height = this.displaySize;
 
     // Clear with black background
     ctx.fillStyle = '#000000';

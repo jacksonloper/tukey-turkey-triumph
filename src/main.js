@@ -76,6 +76,13 @@ function init() {
   console.log('🦃 Tukey\'s Turkey Triumph initialized!');
   console.log('Navigate 4D space and pardon all turkeys!');
 
+  // Display git hash in footer
+  const gitHashEl = document.getElementById('git-hash');
+  if (gitHashEl) {
+    // __GIT_HASH__ is defined by vite.config.js
+    gitHashEl.textContent = typeof __GIT_HASH__ !== 'undefined' ? __GIT_HASH__ : 'unknown';
+  }
+
   // Ship toggle wiring
   shipRadios.forEach(r => {
     r.addEventListener('change', () => {

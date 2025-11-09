@@ -19,6 +19,7 @@ body {
   min-height: 100vh;
   background: #000000;
   -webkit-touch-callout: none; /* prevent context menu on long-press globally */
+  overflow-y: scroll; /* always show scrollbar gutter to prevent layout shift */
 }
 
 /* High-contrast link styles for dark background */
@@ -43,6 +44,7 @@ a:visited {
   max-width: 1400px;
   margin: 0 auto;
   padding: 1rem;
+  box-sizing: border-box;
 }
 
 header {
@@ -83,21 +85,24 @@ h1 {
 
 .info-panel {
   display: flex;
-  gap: 2rem;
-  padding: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.75rem;
   background-color: rgba(100, 108, 255, 0.1);
   border-radius: 8px;
   border: 1px solid #646cff;
   width: 100%;
   max-width: 800px;
   justify-content: center;
+  box-sizing: border-box;
 }
 
 .stat {
   display: flex;
   gap: 0.5rem;
   align-items: center;
-  font-size: 1.1em;
+  font-size: 1em;
+  white-space: nowrap;
 }
 
 .label {
@@ -121,6 +126,14 @@ h1 {
   user-select: none; /* prevent text selection interference */
   -webkit-user-select: none; /* Safari/iOS */
   -webkit-touch-callout: none; /* prevent context menu on long-press */
+  display: block; /* prevent inline spacing */
+  margin: 0 auto; /* center horizontally */
+}
+
+/* Prevent outline on canvas interaction */
+#game-canvas:active,
+#game-canvas:focus {
+  outline: none;
 }
 
 .play-area {
@@ -133,6 +146,8 @@ h1 {
   padding: 12px;
   background-color: #000000;
   box-shadow: 0 4px 20px rgba(100, 108, 255, 0.3);
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .play-area .info-panel {
@@ -254,6 +269,16 @@ footer {
   margin-top: 2rem;
 }
 
+.version-info {
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.version-info #git-hash {
+  color: #00d4ff;
+  font-weight: 600;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
@@ -339,4 +364,27 @@ footer {
 @keyframes bounceDown {
   0%, 100% { transform: translateY(0); opacity: 1; }
   50% { transform: translateY(6px); opacity: 0.9; }
+}
+
+/* Mobile optimizations */
+@media (max-width: 600px) {
+  #app {
+    padding: 0.5rem;
+  }
+
+  .info-panel {
+    gap: 0.5rem;
+    padding: 0.5rem;
+    font-size: 0.9em;
+  }
+
+  .stat {
+    font-size: 0.9em;
+    gap: 0.25rem;
+  }
+
+  .play-area {
+    padding: 8px;
+    gap: 8px;
+  }
 }
