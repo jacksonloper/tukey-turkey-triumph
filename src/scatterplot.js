@@ -398,26 +398,40 @@ export class ScatterplotMatrix {
     const py = startY + innerSize / 2;
 
     if (ui.shipType === 'druuge') {
-      // Draw a small rectangle oriented by forward vector projection in this plane
+      // Druuge ship: elongated along dimension 0 (forward direction in local space)
+      // If this cell involves dim 0, show elongated rectangle; otherwise show square cross-section
       const f = ui.forwardDir || [1,0,0,0];
-      const vx = f[dimJ] || 0;
-      const vy = f[dimI] || 0;
-      let ang = 0;
-      if (Math.abs(vx) + Math.abs(vy) > 1e-6) {
-        ang = Math.atan2(-vy, vx);
-      }
+      const involvesDim0 = (dimI === 0 || dimJ === 0);
+
       ctx.save();
       ctx.translate(px, py);
-      ctx.rotate(ang);
       ctx.fillStyle = '#ffd166';
       ctx.strokeStyle = '#ff9f1c';
       ctx.lineWidth = 2;
-      // width x height (length along x)
-      const w = 18, h = 8;
-      ctx.beginPath();
-      ctx.rect(-w/2, -h/2, w, h);
-      ctx.fill();
-      ctx.stroke();
+
+      if (involvesDim0) {
+        // Elongated view: show rectangle oriented by forward direction
+        const vx = f[dimJ] || 0;
+        const vy = f[dimI] || 0;
+        let ang = 0;
+        if (Math.abs(vx) + Math.abs(vy) > 1e-6) {
+          ang = Math.atan2(-vy, vx);
+        }
+        ctx.rotate(ang);
+        // width x height (length along x)
+        const w = 18, h = 8;
+        ctx.beginPath();
+        ctx.rect(-w/2, -h/2, w, h);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        // Cross-section view: show square (perpendicular to forward direction)
+        const size = 8;
+        ctx.beginPath();
+        ctx.rect(-size/2, -size/2, size, size);
+        ctx.fill();
+        ctx.stroke();
+      }
       ctx.restore();
     } else {
       // Aerilou: blue dot
@@ -441,6 +455,7 @@ export class ScatterplotMatrix {
     const cy = startY + innerSize / 2;
 
     const f = ui.forwardDir || [1,0,0,0];
+    const involvesDim0 = (dimI === 0 || dimJ === 0);
     const vx = f[dimJ] || 0;
     const vy = f[dimI] || 0;
     // Unit vector for forward projection in this plane (pixels)
@@ -461,7 +476,8 @@ export class ScatterplotMatrix {
       ctx.lineWidth = 1.5;
 
       if (p.type === 'linear') {
-        if (fx === 0 && fy === 0) { ctx.restore(); continue; }
+        // Linear thrust puffs only visible in cells involving dimension 0
+        if (!involvesDim0 || (fx === 0 && fy === 0)) { ctx.restore(); continue; }
         const back = -14; // pixels behind center
         const px = cx + fx * back;
         const py = cy + fy * back;
@@ -475,31 +491,48 @@ export class ScatterplotMatrix {
         // Draw only on the appropriate frame(s)
         if (!((dimI === a && dimJ === b) || (dimI === b && dimJ === a))) { ctx.restore(); continue; }
 
-        // Derive forward and left vectors in this cell
-        let tfx = fx, tfy = fy;
-        if (tfx === 0 && tfy === 0) { tfx = 1; tfy = 0; }
-        const lx = -tfy; // left vector (perpendicular)
-        const ly = tfx;
+        // Position angular puffs based on whether we're showing elongated or cross-section view
+        if (involvesDim0) {
+          // Elongated view: use forward and left vectors
+          let tfx = fx, tfy = fy;
+          if (tfx === 0 && tfy === 0) { tfx = 1; tfy = 0; }
+          const lx = -tfy; // left vector (perpendicular)
+          const ly = tfx;
 
-        const front = 12; // px along forward
-        const side = 10;  // px along left/right
-        const dir = -(p.dir || 1); // flipped to match physical torque direction
+          const front = 12; // px along forward
+          const side = 10;  // px along left/right
+          const dir = -(p.dir || 1); // flipped to match physical torque direction
 
-        // For positive dir: left puff forward-left, right puff back-right
-        // For negative dir: left puff back-left, right puff forward-right
-        const leftX  = cx + (dir > 0 ? (tfx*front + lx*side) : (tfx*(-front) + lx*side));
-        const leftY  = cy + (dir > 0 ? (tfy*front + ly*side) : (tfy*(-front) + ly*side));
-        const rightX = cx + (dir > 0 ? (tfx*(-front) - lx*side) : (tfx*front - lx*side));
-        const rightY = cy + (dir > 0 ? (tfy*(-front) - ly*side) : (tfy*front - ly*side));
+          // For positive dir: left puff forward-left, right puff back-right
+          // For negative dir: left puff back-left, right puff forward-right
+          const leftX  = cx + (dir > 0 ? (tfx*front + lx*side) : (tfx*(-front) + lx*side));
+          const leftY  = cy + (dir > 0 ? (tfy*front + ly*side) : (tfy*(-front) + ly*side));
+          const rightX = cx + (dir > 0 ? (tfx*(-front) - lx*side) : (tfx*front - lx*side));
+          const rightY = cy + (dir > 0 ? (tfy*(-front) - ly*side) : (tfy*front - ly*side));
 
-        ctx.beginPath();
-        ctx.arc(leftX, leftY, 4.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(rightX, rightY, 4.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(leftX, leftY, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(rightX, rightY, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          // Cross-section view: show puffs on opposite sides (perpendicular to rotation plane)
+          const side = 10;  // px from center
+          const dir = -(p.dir || 1);
+
+          // For a square cross-section, show puffs on left/right or top/bottom depending on rotation direction
+          ctx.beginPath();
+          ctx.arc(cx - side, cy, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(cx + side, cy, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
       }
       ctx.restore();
     }
