@@ -598,8 +598,8 @@ export class ScatterplotMatrix {
       const sin = Math.sin(rotation);
 
       headPos = bodyPos.slice();
-      headPos[0] = (headPos[0] || 0) + cos * 0.24;
-      headPos[1] = (headPos[1] || 0) + sin * 0.24;
+      headPos[0] = (headPos[0] || 0) + cos * 0.30;
+      headPos[1] = (headPos[1] || 0) + sin * 0.30;
 
       nosePos = bodyPos.slice();
       nosePos[0] = (nosePos[0] || 0) + cos * 0.16;
