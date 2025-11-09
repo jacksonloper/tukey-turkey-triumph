@@ -122,10 +122,24 @@ function init() {
         game.setShipType(selectedShip.value);
       }
 
+      // Reattach trail setting
+      const trailToggle = document.getElementById('trail-toggle');
+      if (trailToggle) {
+        game.setTrailEnabled(trailToggle.checked);
+      }
+
       // Start the new game
       game.start();
     }
   });
+
+  // Trail toggle wiring
+  const trailToggle = document.getElementById('trail-toggle');
+  if (trailToggle) {
+    trailToggle.addEventListener('change', () => {
+      game.setTrailEnabled(trailToggle.checked);
+    });
+  }
 }
 
 // Wait for DOM to be ready

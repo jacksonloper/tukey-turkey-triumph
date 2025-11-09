@@ -209,10 +209,16 @@ export class ScatterplotMatrix {
       };
     });
 
+    // Transform trail to oriented frame, centered on player
+    const trailLocal = ui.trail && ui.trailEnabled ? ui.trail.map(crumbPos => {
+      const relativePos = crumbPos.map((v, i) => v - player.position[i]);
+      return matVecMultN(orientationInverse, relativePos);
+    }) : [];
+
     // Draw each cell in the matrix
     for (let row = 0; row < this.dimensions; row++) {
       for (let col = 0; col < this.dimensions; col++) {
-        this.renderCell(row, col, playerLocal, turkeysLocal, ui);
+        this.renderCell(row, col, playerLocal, turkeysLocal, ui, trailLocal);
       }
     }
 
@@ -224,7 +230,7 @@ export class ScatterplotMatrix {
   /**
    * Render a single scatterplot cell
    */
-  renderCell(row, col, playerLocal, turkeysLocal, ui) {
+  renderCell(row, col, playerLocal, turkeysLocal, ui, trailLocal = []) {
     const ctx = this.ctx;
     const x = this.padding + col * this.cellSize;
     const y = this.padding + row * this.cellSize;
@@ -248,6 +254,11 @@ export class ScatterplotMatrix {
 
     // Draw axes
     this.drawAxes(x, y);
+
+    // Draw trail (behind everything else)
+    if (trailLocal.length > 0) {
+      this.drawTrail(x, y, trailLocal, row, col);
+    }
 
     // Draw turkeys
     turkeysLocal.forEach(turkey => {
@@ -563,6 +574,42 @@ export class ScatterplotMatrix {
       }
       ctx.restore();
     }
+  }
+
+  /**
+   * Draw trail crumbs
+   */
+  drawTrail(cellX, cellY, trailLocal, dimI, dimJ) {
+    const ctx = this.ctx;
+    const innerSize = this.cellSize - this.cellPadding * 2;
+    const startX = cellX + this.cellPadding;
+    const startY = cellY + this.cellPadding;
+    const viewRange = this.gridRange;
+
+    ctx.save();
+
+    // Draw each crumb
+    trailLocal.forEach((crumbPos, index) => {
+      // Project to screen coordinates
+      const px = startX + (crumbPos[dimJ] / viewRange + 1) * innerSize / 2;
+      const py = startY + (1 - (crumbPos[dimI] / viewRange + 1) / 2) * innerSize;
+
+      // Only draw if within visible range
+      if (Math.abs(crumbPos[dimI]) > viewRange || Math.abs(crumbPos[dimJ]) > viewRange) {
+        return;
+      }
+
+      // Fade older crumbs (oldest = start of array)
+      const alpha = 0.3 + (index / trailLocal.length) * 0.5; // 0.3 to 0.8
+
+      // Draw crumb as a small circle
+      ctx.fillStyle = `rgba(255, 200, 100, ${alpha})`; // Golden/yellow color
+      ctx.beginPath();
+      ctx.arc(px, py, 2, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    ctx.restore();
   }
 
   /**
