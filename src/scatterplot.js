@@ -565,6 +565,21 @@ export class ScatterplotMatrix {
       return { px, py };
     };
 
+    // Initialize offsets if they don't exist (for backwards compatibility)
+    if (!turkey.headOffset || !turkey.noseOffset) {
+      const rotation = turkey.rotation || 0;
+      const cos = Math.cos(rotation);
+      const sin = Math.sin(rotation);
+
+      turkey.headOffset = new Array(turkey.position.length).fill(0);
+      turkey.headOffset[0] = cos * 0.06;
+      turkey.headOffset[1] = sin * 0.06;
+
+      turkey.noseOffset = new Array(turkey.position.length).fill(0);
+      turkey.noseOffset[0] = cos * 0.04;
+      turkey.noseOffset[1] = sin * 0.04;
+    }
+
     // Calculate world positions for each turkey part
     const bodyPos = turkey.position;
     const headPos = bodyPos.map((v, i) => v + turkey.headOffset[i]);
