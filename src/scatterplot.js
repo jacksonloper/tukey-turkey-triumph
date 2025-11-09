@@ -183,8 +183,25 @@ export class ScatterplotMatrix {
     const turkeysLocal = turkeys.map(turkey => {
       const relativePos = turkey.position.map((v, i) => v - player.position[i]);
       const localPos = matVecMultN(orientationInverse, relativePos);
+
+      // Transform head and nose positions to local frame as well
+      let headPosLocal = null;
+      let nosePosLocal = null;
+      if (turkey.headOffset && turkey.noseOffset) {
+        const headWorldPos = turkey.position.map((v, i) => v + turkey.headOffset[i]);
+        const noseWorldPos = turkey.position.map((v, i) => v + turkey.noseOffset[i]);
+
+        const headRelative = headWorldPos.map((v, i) => v - player.position[i]);
+        const noseRelative = noseWorldPos.map((v, i) => v - player.position[i]);
+
+        headPosLocal = matVecMultN(orientationInverse, headRelative);
+        nosePosLocal = matVecMultN(orientationInverse, noseRelative);
+      }
+
       return {
         position: localPos,
+        headPosLocal: headPosLocal,
+        nosePosLocal: nosePosLocal,
         pardoned: turkey.pardoned,
         scale: turkey.scale,
         rotation: turkey.rotation,
@@ -556,56 +573,91 @@ export class ScatterplotMatrix {
     const innerSize = this.cellSize - this.cellPadding * 2;
     const startX = cellX + this.cellPadding;
     const startY = cellY + this.cellPadding;
-
-    // Map from [-R, R] local coords to [0, innerSize] pixels
     const viewRange = this.gridRange;
-    const px = startX + (turkey.position[dimJ] / viewRange + 1) * innerSize / 2;
-    const py = startY + (1 - (turkey.position[dimI] / viewRange + 1) / 2) * innerSize;
 
-    // Only draw if within visible range
-    if (Math.abs(turkey.position[dimI]) > viewRange || Math.abs(turkey.position[dimJ]) > viewRange) {
+    // Helper function to project a position to screen coordinates
+    const projectToScreen = (pos) => {
+      const px = startX + (pos[dimJ] / viewRange + 1) * innerSize / 2;
+      const py = startY + (1 - (pos[dimI] / viewRange + 1) / 2) * innerSize;
+      return { px, py };
+    };
+
+    // Get positions for each turkey part (already in local coordinates)
+    const bodyPos = turkey.position;
+    let headPos, nosePos;
+
+    if (turkey.headPosLocal && turkey.nosePosLocal) {
+      // Use pre-transformed positions
+      headPos = turkey.headPosLocal;
+      nosePos = turkey.nosePosLocal;
+    } else {
+      // Backwards compatibility: create random N-D direction based on rotation seed
+      const rotation = turkey.rotation || 0;
+
+      // Use rotation as seed for deterministic random direction
+      const seededRandom = (seed, i) => {
+        const x = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
+        return x - Math.floor(x);
+      };
+
+      const direction = bodyPos.map((_, i) => seededRandom(rotation, i) * 2 - 1);
+      const len = Math.sqrt(direction.reduce((sum, x) => sum + x*x, 0));
+      const unitDir = direction.map(x => x / len);
+
+      headPos = bodyPos.map((v, i) => v + unitDir[i] * 0.30);
+      nosePos = bodyPos.map((v, i) => v + unitDir[i] * 0.16);
+    }
+
+    // Project each part to screen coordinates
+    const body = projectToScreen(bodyPos);
+    const head = projectToScreen(headPos);
+    const nose = projectToScreen(nosePos);
+
+    // Only draw if body is within visible range (approximate visibility check)
+    if (Math.abs(bodyPos[dimI]) > viewRange || Math.abs(bodyPos[dimJ]) > viewRange) {
       return;
     }
 
     if (turkey.pardoned) {
-      // Draw gold medal
-      this.drawMedal(ctx, px, py, turkey.scale);
+      // Draw gold medal at body position
+      this.drawMedal(ctx, body.px, body.py, turkey.scale);
     } else {
-      // Draw turkey
-      this.drawTurkeySprite(ctx, px, py, turkey.rotation, turkey.scale, turkey.hue);
+      // Draw turkey with projected part positions
+      this.drawTurkeySprite(ctx, body, head, nose, turkey.scale, turkey.hue);
     }
   }
 
   /**
-   * Draw a simple turkey sprite
+   * Draw a simple turkey sprite with projected 3D coordinates
+   * @param {Object} body - {px, py} screen coordinates for body
+   * @param {Object} head - {px, py} screen coordinates for head
+   * @param {Object} nose - {px, py} screen coordinates for nose/wattle
    */
-  drawTurkeySprite(ctx, x, y, rotation, scale, hue) {
+  drawTurkeySprite(ctx, body, head, nose, scale, hue) {
     ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(scale, scale);
 
     // Body (colored circle with outline) - use hue for color variation
     ctx.fillStyle = `hsl(${hue}, 60%, 55%)`;
     ctx.strokeStyle = `hsl(${hue}, 65%, 35%)`;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 * scale;
     ctx.beginPath();
-    ctx.arc(0, 0, 5, 0, Math.PI * 2);
+    ctx.arc(body.px, body.py, 5 * scale, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
     // Head (small circle, lighter shade)
     ctx.fillStyle = `hsl(${hue}, 55%, 65%)`;
     ctx.strokeStyle = `hsl(${hue}, 65%, 35%)`;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.5 * scale;
     ctx.beginPath();
-    ctx.arc(0, -6, 3, 0, Math.PI * 2);
+    ctx.arc(head.px, head.py, 3 * scale, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
     // Wattle (red-orange accent)
     ctx.fillStyle = `hsl(${(hue + 180) % 360}, 80%, 60%)`;
     ctx.beginPath();
-    ctx.arc(0, -4, 1.5, 0, Math.PI * 2);
+    ctx.arc(nose.px, nose.py, 1.5 * scale, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();

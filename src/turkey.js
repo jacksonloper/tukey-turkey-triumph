@@ -32,6 +32,20 @@ export class Turkey {
     this.scale = 1.0;
     this.rotation = Math.random() * Math.PI * 2;
     this.hue = Math.random() * 360; // Random hue for color variation
+
+    // Part offsets in N-dimensional space (relative to body position)
+    // These create a "turkey shape" that gets projected into each scatterplot
+    // Use a random direction in N-dimensional space for turkey orientation
+    const direction = Array.from({ length: this.position.length }, () => gaussianRandom());
+    const len = Math.sqrt(direction.reduce((sum, x) => sum + x*x, 0));
+    const unitDir = direction.map(x => x / len);
+
+    // Head offset: positioned to be ~7.5 pixels away when projected
+    // With viewRange=4 and typical innerSize~200px: 7.5px ≈ 0.30 world units
+    this.headOffset = unitDir.map(x => x * 0.30);
+
+    // Nose offset: positioned to be ~4 pixels away when projected
+    this.noseOffset = unitDir.map(x => x * 0.16);
   }
 
   /**
