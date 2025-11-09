@@ -1,15 +1,15 @@
 /**
  * Scatterplot Matrix (Draughtsman's Display) Renderer
- * Displays all pairwise projections of 4D data
+ * Displays all pairwise projections of N-D data
  */
 
-import { matVecMult, transpose } from './math4d.js';
+import { matVecMult, matVecMultN, transpose, transposeN } from './math4d.js';
 
 export class ScatterplotMatrix {
-  constructor(canvas) {
+  constructor(canvas, dimensions = 4) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.dimensions = 4;
+    this.dimensions = dimensions;
     this.cellSize = 0;
     this.padding = 40;
     this.cellPadding = 10;
@@ -171,25 +171,18 @@ export class ScatterplotMatrix {
 
     // Transform all positions to player's oriented frame (origin-fixed view)
     // Rotate world coordinates by inverse orientation; do not center on player
-    const orientationInverse = transpose(player.orientation);
+    const orientationInverse = transposeN(player.orientation);
     this._orientationInverse = orientationInverse;
     this._playerWorld = player.position;
 
-    const playerLocal = matVecMult(orientationInverse, [
-      player.position[0] - player.position[0],
-      player.position[1] - player.position[1],
-      player.position[2] - player.position[2],
-      player.position[3] - player.position[3],
-    ]); // always [0,0,0,0]
+    const playerLocal = matVecMultN(orientationInverse,
+      player.position.map((v, i) => v - player.position[i])
+    ); // always [0,0,0,...,0]
 
     // Transform turkeys to oriented frame, centered on player (so dot is centered)
     const turkeysLocal = turkeys.map(turkey => {
-      const localPos = matVecMult(orientationInverse, [
-        turkey.position[0] - player.position[0],
-        turkey.position[1] - player.position[1],
-        turkey.position[2] - player.position[2],
-        turkey.position[3] - player.position[3]
-      ]);
+      const relativePos = turkey.position.map((v, i) => v - player.position[i]);
+      const localPos = matVecMultN(orientationInverse, relativePos);
       return {
         position: localPos,
         pardoned: turkey.pardoned,
@@ -251,7 +244,7 @@ export class ScatterplotMatrix {
     this.drawPuffs(x, y, row, col, ui);
   }
 
-  // Build world grid lines (cached): axis-aligned lines across the 4D box [-R,R]^4
+  // Build world grid lines (cached): axis-aligned lines across the N-D box [-R,R]^N
   buildWorldGridLines() {
     const R = this.gridRange;
     const s = this.gridSpacing;
@@ -259,23 +252,36 @@ export class ScatterplotMatrix {
     for (let v = -R; v <= R + 1e-9; v += s) steps.push(+v.toFixed(6));
 
     const lines = [];
+    const n = this.dimensions;
+
     // For each axis k, other dims fixed to stepped values, axis varies -R..R
-    for (let k = 0; k < 4; k++) {
-      const otherDims = [0,1,2,3].filter(d => d !== k);
-      for (const v0 of steps) {
-        for (const v1 of steps) {
-          for (const v2 of steps) {
-            const a = [0,0,0,0];
-            const b = [0,0,0,0];
-            a[k] = -R; b[k] = R;
-            a[otherDims[0]] = v0; b[otherDims[0]] = v0;
-            a[otherDims[1]] = v1; b[otherDims[1]] = v1;
-            a[otherDims[2]] = v2; b[otherDims[2]] = v2;
-            const isAxis = (Math.abs(v0) < 1e-9 && Math.abs(v1) < 1e-9 && Math.abs(v2) < 1e-9);
-            lines.push({ a, b, isAxis });
-          }
-        }
+    for (let k = 0; k < n; k++) {
+      const otherDims = [];
+      for (let d = 0; d < n; d++) {
+        if (d !== k) otherDims.push(d);
       }
+
+      // Generate all combinations of step values for other dimensions
+      const generateCombinations = (dims, index, current) => {
+        if (index === dims.length) {
+          const a = new Array(n).fill(0);
+          const b = new Array(n).fill(0);
+          a[k] = -R;
+          b[k] = R;
+          for (let i = 0; i < dims.length; i++) {
+            a[dims[i]] = current[i];
+            b[dims[i]] = current[i];
+          }
+          const isAxis = current.every(v => Math.abs(v) < 1e-9);
+          lines.push({ a, b, isAxis });
+          return;
+        }
+        for (const v of steps) {
+          generateCombinations(dims, index + 1, [...current, v]);
+        }
+      };
+
+      generateCombinations(otherDims, 0, []);
     }
     this._gridLinesWorld = lines;
   }
@@ -295,7 +301,7 @@ export class ScatterplotMatrix {
     ctx.clip();
 
     const Rinv = this._orientationInverse;
-    const P = this._playerWorld || [0,0,0,0];
+    const P = this._playerWorld;
 
     if (!this._gridLinesWorld) this.buildWorldGridLines();
 
@@ -309,19 +315,9 @@ export class ScatterplotMatrix {
     // Draw every precomputed world line
     for (const line of this._gridLinesWorld) {
       const a = line.a, b = line.b;
-      // Transform to oriented frame (Rinv * world)
-      const la = [
-        Rinv[0][0]*(a[0]-P[0]) + Rinv[0][1]*(a[1]-P[1]) + Rinv[0][2]*(a[2]-P[2]) + Rinv[0][3]*(a[3]-P[3]),
-        Rinv[1][0]*(a[0]-P[0]) + Rinv[1][1]*(a[1]-P[1]) + Rinv[1][2]*(a[2]-P[2]) + Rinv[1][3]*(a[3]-P[3]),
-        Rinv[2][0]*(a[0]-P[0]) + Rinv[2][1]*(a[1]-P[1]) + Rinv[2][2]*(a[2]-P[2]) + Rinv[2][3]*(a[3]-P[3]),
-        Rinv[3][0]*(a[0]-P[0]) + Rinv[3][1]*(a[1]-P[1]) + Rinv[3][2]*(a[2]-P[2]) + Rinv[3][3]*(a[3]-P[3])
-      ];
-      const lb = [
-        Rinv[0][0]*(b[0]-P[0]) + Rinv[0][1]*(b[1]-P[1]) + Rinv[0][2]*(b[2]-P[2]) + Rinv[0][3]*(b[3]-P[3]),
-        Rinv[1][0]*(b[0]-P[0]) + Rinv[1][1]*(b[1]-P[1]) + Rinv[1][2]*(b[2]-P[2]) + Rinv[1][3]*(b[3]-P[3]),
-        Rinv[2][0]*(b[0]-P[0]) + Rinv[2][1]*(b[1]-P[1]) + Rinv[2][2]*(b[2]-P[2]) + Rinv[2][3]*(b[3]-P[3]),
-        Rinv[3][0]*(b[0]-P[0]) + Rinv[3][1]*(b[1]-P[1]) + Rinv[3][2]*(b[2]-P[2]) + Rinv[3][3]*(b[3]-P[3])
-      ];
+      // Transform to oriented frame (Rinv * (world - P))
+      const la = matVecMultN(Rinv, a.map((v, i) => v - P[i]));
+      const lb = matVecMultN(Rinv, b.map((v, i) => v - P[i]));
 
       // Quick reject: both endpoints outside on same side in either dim
       const aI = la[dimI], bI = lb[dimI];
@@ -347,24 +343,14 @@ export class ScatterplotMatrix {
 
     // Emphasize world boundary of the fixed box at +/- viewRange along both dims
     const drawBoundaryLine = (fixDim, fixVal, varyDim) => {
-      const a = [0, 0, 0, 0];
-      const b = [0, 0, 0, 0];
+      const a = new Array(this.dimensions).fill(0);
+      const b = new Array(this.dimensions).fill(0);
       a[fixDim] = fixVal;
       b[fixDim] = fixVal;
       a[varyDim] = -viewRange;
       b[varyDim] = +viewRange;
-      const la = [
-        Rinv[0][0]*(a[0]-P[0]) + Rinv[0][1]*(a[1]-P[1]) + Rinv[0][2]*(a[2]-P[2]) + Rinv[0][3]*(a[3]-P[3]),
-        Rinv[1][0]*(a[0]-P[0]) + Rinv[1][1]*(a[1]-P[1]) + Rinv[1][2]*(a[2]-P[2]) + Rinv[1][3]*(a[3]-P[3]),
-        Rinv[2][0]*(a[0]-P[0]) + Rinv[2][1]*(a[1]-P[1]) + Rinv[2][2]*(a[2]-P[2]) + Rinv[2][3]*(a[3]-P[3]),
-        Rinv[3][0]*(a[0]-P[0]) + Rinv[3][1]*(a[1]-P[1]) + Rinv[3][2]*(a[2]-P[2]) + Rinv[3][3]*(a[3]-P[3])
-      ];
-      const lb = [
-        Rinv[0][0]*(b[0]-P[0]) + Rinv[0][1]*(b[1]-P[1]) + Rinv[0][2]*(b[2]-P[2]) + Rinv[0][3]*(b[3]-P[3]),
-        Rinv[1][0]*(b[0]-P[0]) + Rinv[1][1]*(b[1]-P[1]) + Rinv[1][2]*(b[2]-P[2]) + Rinv[1][3]*(b[3]-P[3]),
-        Rinv[2][0]*(b[0]-P[0]) + Rinv[2][1]*(b[1]-P[1]) + Rinv[2][2]*(b[2]-P[2]) + Rinv[2][3]*(b[3]-P[3]),
-        Rinv[3][0]*(b[0]-P[0]) + Rinv[3][1]*(b[1]-P[1]) + Rinv[3][2]*(b[2]-P[2]) + Rinv[3][3]*(b[3]-P[3])
-      ];
+      const la = matVecMultN(Rinv, a.map((v, i) => v - P[i]));
+      const lb = matVecMultN(Rinv, b.map((v, i) => v - P[i]));
       // Map using the cell axes: x uses dimJ, y uses dimI
       const x1 = startX + ((la[dimJ] / viewRange) + 1) * innerSize / 2;
       const y1 = startY + (1 - ((la[dimI] / viewRange) + 1) / 2) * innerSize;

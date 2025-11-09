@@ -10,12 +10,12 @@
     <div id="app">
       <header>
         <h1>Tukey's Turkey Triumph</h1>
-        <p class="subtitle">Navigate R⁴ • Rotate the Basis • Pardon Turkeys</p>
+        <p class="subtitle" id="subtitle">Navigate R⁴ • Rotate the Basis • Pardon Turkeys</p>
       </header>
       <div class="game-container">
         <div class="about">
           <p>
-            This game demonstrates what John W. Tukey called a “draughtsman’s display”: a matrix of pairwise scatterplots. Each off‑diagonal cell shows the projection of your 4D world onto a (Dim i, Dim j) plane; diagonals label dimensions. The grid stays aligned to the world’s cardinal axes while you rotate the current basis and move forward, so you can watch how the projections change as you navigate R⁴.
+            This game demonstrates what John W. Tukey called a "draughtsman's display": a matrix of pairwise scatterplots. Each off‑diagonal cell shows the projection of your high-dimensional world onto a (Dim i, Dim j) plane; diagonals label dimensions. The grid stays aligned to the world's cardinal axes while you rotate the current basis and move forward, so you can watch how the projections change as you navigate through space.
           </p>
           <p>
             The matrix‑of‑scatterplots idea was originated by J. A. Hartigan in
@@ -35,12 +35,21 @@
           <div class="instructions instructions-top">
           <p><strong>Move:</strong> Hold W (or click the big blue button) to move forward</p>
             <p><strong>Rotate:</strong> Hold on any off‑diagonal cell (i, j) to rotate the current basis in the (i, j) plane</p>
-            <p><strong>Hop:</strong> Click a diagonal (D1–D4) to jump along that dimension</p>
+            <p><strong>Hop:</strong> Click a diagonal to jump along that dimension</p>
           </div>
           <div class="ship-toggle" role="group" aria-label="Ship selection">
             <span class="label">Ship:</span>
             <label><input type="radio" name="ship" value="aerilou" checked> Aerilou (arcade)</label>
             <label><input type="radio" name="ship" value="druuge"> Druuge (momentum)</label>
+          </div>
+          <div class="dimension-selector">
+            <label for="dimension-select">Dimensions:</label>
+            <select id="dimension-select">
+              <option value="2">2D</option>
+              <option value="3">3D</option>
+              <option value="4" selected>4D</option>
+              <option value="5">5D</option>
+            </select>
           </div>
         </div>
 

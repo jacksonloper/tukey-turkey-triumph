@@ -12,9 +12,19 @@ function init() {
   const goButton = document.getElementById('go-button');
   const scrollHint = document.getElementById('scroll-hint');
   const shipRadios = document.querySelectorAll('input[name="ship"]');
+  const dimensionSelect = document.getElementById('dimension-select');
+  const subtitle = document.getElementById('subtitle');
 
   // Create game instance
-  const game = new Game(canvas);
+  let currentDimensions = parseInt(dimensionSelect.value) || 4;
+  let game = new Game(canvas, currentDimensions);
+
+  // Update subtitle to reflect current dimension
+  function updateSubtitle(dim) {
+    const superscripts = { 2: '²', 3: '³', 4: '⁴', 5: '⁵' };
+    subtitle.textContent = `Navigate R${superscripts[dim] || dim} • Rotate the Basis • Pardon Turkeys`;
+  }
+  updateSubtitle(currentDimensions);
 
   // Set up controls - continuous movement on 'W' hold
   let wPressed = false;
@@ -90,6 +100,31 @@ function init() {
         game.setShipType(r.value);
       }
     });
+  });
+
+  // Dimension selector wiring
+  dimensionSelect.addEventListener('change', () => {
+    const newDimensions = parseInt(dimensionSelect.value);
+    if (newDimensions !== currentDimensions) {
+      // Stop the current game
+      game.running = false;
+
+      // Create a new game with the new dimensions
+      currentDimensions = newDimensions;
+      game = new Game(canvas, currentDimensions);
+
+      // Update subtitle
+      updateSubtitle(currentDimensions);
+
+      // Reattach ship type
+      const selectedShip = document.querySelector('input[name="ship"]:checked');
+      if (selectedShip) {
+        game.setShipType(selectedShip.value);
+      }
+
+      // Start the new game
+      game.start();
+    }
   });
 }
 

@@ -1,30 +1,26 @@
 /**
  * Turkey AI with Ornstein-Uhlenbeck Velocity Process
- * Smooth correlated motion in R^4 using OU on velocity, with world-box bouncing
+ * Smooth correlated motion in R^N using OU on velocity, with world-box bouncing
  */
 
-import { vec4, add4, scale4 } from './math4d.js';
+import { vec4, vecN, add4, scale4 } from './math4d.js';
 
 export class Turkey {
   constructor(position = null) {
-    // Position in R^4 - start near origin if not specified
+    // Position in R^N - start near origin if not specified
     if (position) {
       this.position = position;
     } else {
-      // Random position in a sphere around origin (32x larger range)
+      // Default to 4D if position not provided
+      const dims = 4;
       const r = Math.random() * 9.6; // Within radius 9.6 of origin
-      const direction = [
-        gaussianRandom(),
-        gaussianRandom(),
-        gaussianRandom(),
-        gaussianRandom()
-      ];
+      const direction = Array.from({ length: dims }, () => gaussianRandom());
       const len = Math.sqrt(direction.reduce((sum, x) => sum + x*x, 0));
       this.position = direction.map(x => (x / len) * r);
     }
 
     // Ornstein-Uhlenbeck on velocity: dV = -β V dt + σ dW ; dX = V dt
-    this.velocity = vec4(0, 0, 0, 0);
+    this.velocity = new Array(this.position.length).fill(0);
     this.beta = 1.2;     // velocity mean-reversion rate (friction)
     this.sigmaV = 0.9;   // velocity noise scale
     this.maxSpeed = 1.5; // soft clamp to avoid runaway
@@ -51,7 +47,7 @@ export class Turkey {
       return;
     }
     // No movement: keep velocity zero
-    this.velocity = vec4(0, 0, 0, 0);
+    this.velocity = new Array(this.position.length).fill(0);
   }
 
   /**
@@ -60,7 +56,7 @@ export class Turkey {
   pardon() {
     if (!this.pardoned) {
       this.pardoned = true;
-      this.velocity = vec4(0, 0, 0, 0);
+      this.velocity = new Array(this.position.length).fill(0);
     }
   }
 
