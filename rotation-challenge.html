@@ -28,12 +28,12 @@
       <div class="game-container">
         <div class="about">
           <p>
-            <strong>The Challenge:</strong> Two smooth curves are displayed on the $(n-1)$-sphere $S^{n-1} \subset \mathbb{R}^n$.
+            <strong>The Challenge:</strong> Two smooth curves are displayed inside the $n$-dimensional ball $B^n \subset \mathbb{R}^n$.
             The orange curve (fixed) is the original path. The cyan curve (rotating) is the same path rotated by a secret matrix $R \in \text{SO}(n)$
             (a uniformly random rotation sampled from the Haar measure). Your goal is to rotate the cyan curve until it aligns perfectly with the orange curve.
           </p>
           <p>
-            <strong>Mathematical Setup:</strong> The original path $\gamma: [0,1] \to S^{n-1}$ is a smooth curve constrained to the sphere.
+            <strong>Mathematical Setup:</strong> The original path $\gamma: [0,1] \to B^n$ is a smooth curve that stays inside the ball.
             The target curve is $R\gamma(t)$ for some unknown $R \in \text{SO}(n)$. You control an orientation matrix $Q \in \text{SO}(n)$
             by applying incremental rotations. The orange curve stays fixed while the cyan curve transforms as $Q^T R\gamma(t)$.
             When $Q = R$, we have $Q^T R = I$, so the cyan curve matches the orange, and you win!

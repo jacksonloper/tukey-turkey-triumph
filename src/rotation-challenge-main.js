@@ -20,9 +20,7 @@ function init() {
   // Update subtitle to reflect current dimension
   function updateSubtitle(dim) {
     const superscripts = { 2: '²', 3: '³', 4: '⁴', 5: '⁵' };
-    const n = dim - 1;
-    const superN = { 1: '¹', 2: '²', 3: '³', 4: '⁴' };
-    subtitle.textContent = `S${superN[n] || `^${n}`} in R${superscripts[dim] || dim} • Master SO(${dim}) • Find the Hidden Rotation`;
+    subtitle.textContent = `Curves in R${superscripts[dim] || dim} • Master SO(${dim}) • Find the Hidden Rotation`;
   }
   updateSubtitle(currentDimensions);
 

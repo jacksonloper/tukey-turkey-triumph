@@ -5,24 +5,27 @@
 import { vecN, scaleN } from './math4d.js';
 
 /**
- * Generate a smooth random path on the unit sphere
- * Uses a Fourier series approach: smooth functions in each coordinate, then normalize
+ * Generate a smooth random path that stays inside a sphere (ball)
+ * Uses a Fourier series approach with amplitude control to keep points within radius
  *
- * @param {number} dimensions - Ambient dimension n (path lives on S^(n-1))
+ * @param {number} dimensions - Ambient dimension n (path lives in n-dimensional ball)
  * @param {number} numPoints - Number of points to sample along the path
  * @param {number} numFrequencies - Number of Fourier modes (controls smoothness)
- * @param {number} radius - Radius of the sphere (default 3.0 for visibility)
- * @returns {Array} Array of points on the sphere
+ * @param {number} radius - Radius of the ball (default 3.0 for visibility)
+ * @returns {Array} Array of points inside the sphere
  */
 export function generateSpherePath(dimensions, numPoints = 100, numFrequencies = 3, radius = 3.0) {
   // Generate random Fourier coefficients for each dimension
+  // Use smaller coefficients to keep paths naturally within the ball
+  const maxRadius = radius * 0.7; // Keep path comfortably inside
   const coefficients = [];
   for (let d = 0; d < dimensions; d++) {
     const cosCoeffs = [];
     const sinCoeffs = [];
     for (let k = 0; k <= numFrequencies; k++) {
-      cosCoeffs.push((Math.random() - 0.5) * 2);
-      sinCoeffs.push((Math.random() - 0.5) * 2);
+      const amplitude = maxRadius / (numFrequencies * Math.sqrt(dimensions));
+      cosCoeffs.push((Math.random() - 0.5) * 2 * amplitude);
+      sinCoeffs.push((Math.random() - 0.5) * 2 * amplitude);
     }
     coefficients.push({ cos: cosCoeffs, sin: sinCoeffs });
   }
@@ -43,11 +46,14 @@ export function generateSpherePath(dimensions, numPoints = 100, numFrequencies =
       point.push(value);
     }
 
-    // Normalize to project onto unit sphere, then scale to desired radius
+    // If point exceeds radius, scale it down to fit within ball
     const norm = Math.sqrt(point.reduce((sum, x) => sum + x * x, 0));
-    const normalized = point.map(x => (x / norm) * radius);
+    if (norm > radius) {
+      const scale = radius / norm;
+      point.forEach((val, idx) => point[idx] = val * scale);
+    }
 
-    path.push(normalized);
+    path.push(point);
   }
 
   return path;
