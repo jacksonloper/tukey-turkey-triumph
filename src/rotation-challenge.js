@@ -55,7 +55,6 @@ export class RotationChallenge {
 
     // UI elements
     this.alignmentScoreEl = document.getElementById('alignment-score');
-    this.challengeStatusEl = document.getElementById('challenge-status');
     this.bestScoreEl = document.getElementById('best-score');
 
     // Game loop
@@ -211,22 +210,6 @@ export class RotationChallenge {
       this.bestScoreEl.textContent = this.bestDistance === Infinity
         ? '—'
         : this.bestDistance.toFixed(3);
-    }
-
-    if (this.challengeStatusEl) {
-      if (this.hasWon) {
-        this.challengeStatusEl.textContent = '🎉 Perfect Alignment!';
-        this.challengeStatusEl.style.color = '#00ff00';
-      } else if (this.currentDistance <= 0.2) {
-        this.challengeStatusEl.textContent = 'Very Close!';
-        this.challengeStatusEl.style.color = '#ffff00';
-      } else if (this.currentDistance <= 0.5) {
-        this.challengeStatusEl.textContent = 'Getting Warmer...';
-        this.challengeStatusEl.style.color = '#ff9900';
-      } else {
-        this.challengeStatusEl.textContent = 'Keep trying!';
-        this.challengeStatusEl.style.color = '#ffffff';
-      }
     }
   }
 
