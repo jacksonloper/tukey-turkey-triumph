@@ -92,17 +92,23 @@ export class RotationChallenge {
    */
   newChallenge() {
     if (this.simplexMode) {
-      // Generate a simplex with labeled vertices
-      this.originalPath = generateSimplex(this.dimensions, 3);
+      // Generate base simplex with labeled vertices
+      const baseSimplex = generateSimplex(this.dimensions, 3);
 
       // Create labels for vertices (0, 1, 2, ...)
       this.vertexLabels = [];
-      for (let i = 0; i < this.originalPath.length; i++) {
+      for (let i = 0; i < baseSimplex.length; i++) {
         this.vertexLabels.push(String(i));
       }
 
-      // For simplex mode, use a rotation that creates a circular arrangement in (D1, D2)
-      this.targetRotation = generateCircularOrientation(this.dimensions);
+      // Apply circular orientation to base simplex to get orange (original) path
+      // This makes the orange simplex appear as a nice circle in (D1, D2)
+      const circularOrientation = generateCircularOrientation(this.dimensions, baseSimplex);
+      this.originalPath = rotatePath(baseSimplex, circularOrientation);
+
+      // Sample a random rotation for the target (cyan) path
+      this.targetRotation = sampleRandomRotation(this.dimensions);
+      this.targetPath = rotatePath(this.originalPath, this.targetRotation);
     } else {
       // Generate a smooth random path on the sphere
       this.originalPath = generateSpherePath(this.dimensions, 100, 3);
@@ -110,10 +116,8 @@ export class RotationChallenge {
 
       // Sample a random rotation
       this.targetRotation = sampleRandomRotation(this.dimensions);
+      this.targetPath = rotatePath(this.originalPath, this.targetRotation);
     }
-
-    // Apply rotation to create target path
-    this.targetPath = rotatePath(this.originalPath, this.targetRotation);
 
     // Reset player orientation
     this.playerOrientation = identityNxN(this.dimensions);

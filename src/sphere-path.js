@@ -149,13 +149,146 @@ export function generateSimplex(dimensions, radius = 3.0) {
 }
 
 /**
+ * Construct two orthonormal directions using Fourier modes
+ * that project an (n+1)-vertex simplex to a regular polygon
+ *
+ * @param {number} n - Dimension of simplex (vertices = n+1)
+ * @param {number} m - Fourier mode (default 1 for simplest)
+ * @returns {Object} {u, v} - Two orthonormal direction vectors of length n+1
+ */
+export function constructFourierDirections(n, m = 1) {
+  const N = n + 1;  // Number of vertices
+
+  // Step 1: Build raw Fourier mode components
+  const a = new Array(N);
+  const b = new Array(N);
+
+  for (let k = 0; k < N; k++) {
+    const angle = 2 * Math.PI * m * k / N;
+    a[k] = Math.cos(angle);
+    b[k] = Math.sin(angle);
+  }
+
+  // Optional numerical stabilization (center to ensure sum = 0)
+  const meanA = a.reduce((sum, val) => sum + val, 0) / N;
+  const meanB = b.reduce((sum, val) => sum + val, 0) / N;
+
+  for (let k = 0; k < N; k++) {
+    a[k] -= meanA;
+    b[k] -= meanB;
+  }
+
+  // Step 2: Normalize to make them orthonormal
+  const normA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
+  const normB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
+
+  const u = a.map(val => val / normA);
+  const v = b.map(val => val / normB);
+
+  return { u, v };
+}
+
+/**
+ * Generate a rotation matrix that orients a simplex to appear circular in (D1, D2)
+ * Uses Fourier mode projection to create regular polygon arrangement
+ *
+ * @param {number} dimensions - Ambient dimension n
+ * @param {Array} vertices - Simplex vertices in R^n
+ * @returns {Array} n×n rotation matrix
+ */
+export function generateCircularOrientation(dimensions, vertices) {
+  const n = dimensions;
+  const N = n + 1;  // Number of vertices
+
+  // Get Fourier mode directions (these are in R^(N) vertex-coordinate space)
+  const { u, v } = constructFourierDirections(n, 1);
+
+  // Convert Fourier directions to spatial directions in R^n
+  // direction_u = sum_i u[i] * vertex_i
+  const dirU = new Array(n).fill(0);
+  const dirV = new Array(n).fill(0);
+
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < n; j++) {
+      dirU[j] += u[i] * vertices[i][j];
+      dirV[j] += v[i] * vertices[i][j];
+    }
+  }
+
+  // Normalize dirU and dirV
+  const normU = Math.sqrt(dirU.reduce((sum, x) => sum + x * x, 0));
+  const normV = Math.sqrt(dirV.reduce((sum, x) => sum + x * x, 0));
+
+  for (let j = 0; j < n; j++) {
+    dirU[j] /= normU;
+    dirV[j] /= normV;
+  }
+
+  // Make dirV orthogonal to dirU (Gram-Schmidt)
+  const dot = dirU.reduce((sum, val, i) => sum + val * dirV[i], 0);
+  for (let j = 0; j < n; j++) {
+    dirV[j] -= dot * dirU[j];
+  }
+
+  // Re-normalize dirV
+  const normV2 = Math.sqrt(dirV.reduce((sum, x) => sum + x * x, 0));
+  for (let j = 0; j < n; j++) {
+    dirV[j] /= normV2;
+  }
+
+  // Build rotation matrix with dirU as first row, dirV as second row
+  // Complete with remaining orthonormal vectors via Gram-Schmidt
+  const R = [];
+  R.push([...dirU]);
+  R.push([...dirV]);
+
+  // Add remaining basis vectors
+  for (let i = 2; i < n; i++) {
+    // Start with standard basis vector
+    const newVec = new Array(n).fill(0);
+    newVec[i] = 1;
+
+    // Orthogonalize against all previous vectors
+    for (let j = 0; j < i; j++) {
+      const dot = newVec.reduce((sum, val, k) => sum + val * R[j][k], 0);
+      for (let k = 0; k < n; k++) {
+        newVec[k] -= dot * R[j][k];
+      }
+    }
+
+    // Normalize
+    const norm = Math.sqrt(newVec.reduce((sum, x) => sum + x * x, 0));
+    if (norm > 1e-10) {
+      R.push(newVec.map(x => x / norm));
+    } else {
+      // Try a random vector if standard basis failed
+      const randVec = new Array(n).fill(0).map(() => Math.random() - 0.5);
+
+      // Orthogonalize against all previous vectors
+      for (let j = 0; j < i; j++) {
+        const dot = randVec.reduce((sum, val, k) => sum + val * R[j][k], 0);
+        for (let k = 0; k < n; k++) {
+          randVec[k] -= dot * R[j][k];
+        }
+      }
+
+      // Normalize
+      const norm2 = Math.sqrt(randVec.reduce((sum, x) => sum + x * x, 0));
+      R.push(randVec.map(x => x / norm2));
+    }
+  }
+
+  return R;
+}
+
+/**
  * Generate a rotation that orients a simplex to appear circular in the (x0, x1) projection
  * This creates a nice visualization where vertices are evenly distributed in the first 2D view
  *
  * @param {number} dimensions - Ambient dimension n
  * @returns {Array} n×n rotation matrix
  */
-export function generateCircularOrientation(dimensions) {
+export function generateCircularOrientationOld(dimensions) {
   const n = dimensions;
   let R = identityNxN(n);
 
