@@ -37,10 +37,10 @@ export class RotationChallenge {
     this.rotationSpeed = Math.PI / 2; // rad/sec
     this.rotationPlanes = this.generateRotationPlanes(dimensions);
 
-    // Scoring - geodesic distance on SO(n)
+    // Scoring - rotation distance on SO(n)
     this.currentDistance = Infinity;
     this.bestDistance = Infinity;
-    this.winThreshold = 0.1; // Geodesic distance threshold for winning (close to 0)
+    this.winThreshold = 0.1; // Distance threshold for winning (close to 0)
     this.hasWon = false;
 
     // Halfway animation state
@@ -122,7 +122,7 @@ export class RotationChallenge {
       } else {
         // Smooth interpolation using ease-in-out
         const t = this.easeInOutCubic(this.halfwayProgress);
-        // Use geodesic interpolation to preserve orthonormality
+        // Use rotation interpolation to preserve orthonormality
         this.playerOrientation = interpRotationSO(
           this.halfwayStartOrientation,
           this.halfwayTargetOrientation,
@@ -142,7 +142,7 @@ export class RotationChallenge {
       }
     }
 
-    // Compute current geodesic distance
+    // Compute current rotation distance
     this.updateDistance();
 
     // Check win condition (distance below threshold)
@@ -162,10 +162,10 @@ export class RotationChallenge {
   }
 
   /**
-   * Compute geodesic distance on SO(n) between player orientation and target rotation
+   * Compute rotation distance between player orientation and target rotation
    */
   updateDistance() {
-    // Compute geodesic distance: ||log(R^T Q)||_F
+    // Compute distance: ||R^T Q - I||_F
     // where R = targetRotation, Q = playerOrientation
     this.currentDistance = rotationDistanceSO(this.targetRotation, this.playerOrientation);
 
@@ -236,9 +236,9 @@ export class RotationChallenge {
   halfTheDistance() {
     if (this.isAnimatingHalfway) return; // Already animating
 
-    // Use geodesicInterpSO which now uses robust Gram-Schmidt approach
+    // Use interpRotationSO which uses robust Gram-Schmidt approach
     // No need for manual log/exp computation
-    const targetOrientation = geodesicInterpSO(
+    const targetOrientation = interpRotationSO(
       this.playerOrientation,
       this.targetRotation,
       0.5
