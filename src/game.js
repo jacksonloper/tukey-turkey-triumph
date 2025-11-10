@@ -80,6 +80,13 @@ export class Game {
     this.turkeys[0] = this.spawnTurkeyFarFromPlayer();
     this.pardonedTotal = 0; // running total across spawns
 
+    // Trail feature
+    this.trailEnabled = true; // On by default
+    this.trail = []; // Array of N-dimensional positions
+    this.trailMaxLength = 500; // Maximum number of crumbs (quite long for drawing)
+    this.trailSpacing = 0.08; // Distance between crumbs (in world units)
+    this.distanceSinceLastCrumb = 0; // Track distance traveled since last crumb
+
     // Rendering
     this.scatterplot = new ScatterplotMatrix(canvas, dimensions);
     // Rotation handled smoothly while mouse is held on a cell; no discrete step on click
@@ -170,7 +177,11 @@ export class Game {
     // Move a fixed distance
     const distance = 0.5;
     const movement = scaleN(worldDir, distance);
+    const previousPosition = [...this.player.position];
     this.player.position = addN(this.player.position, movement);
+
+    // Record trail
+    this.recordTrailCrumb(previousPosition, this.player.position);
 
     // Check for turkeys to pardon
     this.checkPardonRadius();
@@ -278,7 +289,9 @@ export class Game {
       if (this.isMovingForward) {
         const worldDir = matVecMultN(this.player.orientation, this.player.forwardDir);
         const movement = scaleN(worldDir, this.moveSpeed * dt);
+        const previousPosition = [...this.player.position];
         this.player.position = addN(this.player.position, movement);
+        this.recordTrailCrumb(previousPosition, this.player.position);
         this.checkPardonRadius();
       }
     } else {
@@ -304,7 +317,9 @@ export class Game {
         this.playerVelocity = scaleN(this.playerVelocity, s);
       }
       // Integrate position
+      const previousPosition = [...this.player.position];
       this.player.position = addN(this.player.position, scaleN(this.playerVelocity, dt));
+      this.recordTrailCrumb(previousPosition, this.player.position);
       this.checkPardonRadius();
       // Integrate angular velocity into orientation
       const angFactor = Math.exp(-this.angularDamp * dt);
@@ -347,6 +362,8 @@ export class Game {
       shipType: this.shipType,
       puffs: this.puffs,
       forwardDir: this.player.forwardDir,
+      trail: this.trail,
+      trailEnabled: this.trailEnabled,
     });
   }
 
@@ -456,5 +473,45 @@ export class Game {
     const d = distanceN(this.player.position, target.position);
     // Format with 2 decimals
     this.distanceEl.textContent = d.toFixed(2);
+  }
+
+  // Trail management methods
+  setTrailEnabled(enabled) {
+    this.trailEnabled = enabled;
+    if (!enabled) {
+      this.trail = []; // Clear trail when disabled
+      this.distanceSinceLastCrumb = 0;
+    }
+  }
+
+  clearTrail() {
+    this.trail = [];
+    this.distanceSinceLastCrumb = 0;
+  }
+
+  recordTrailCrumb(previousPosition, currentPosition) {
+    if (!this.trailEnabled) return;
+
+    // Calculate distance moved
+    const distanceMoved = distanceN(previousPosition, currentPosition);
+    this.distanceSinceLastCrumb += distanceMoved;
+
+    // Add crumbs at regular intervals
+    while (this.distanceSinceLastCrumb >= this.trailSpacing) {
+      // Calculate the position for this crumb
+      const t = (this.distanceSinceLastCrumb - this.trailSpacing) / distanceMoved;
+      const crumbPos = [];
+      for (let i = 0; i < this.dimensions; i++) {
+        crumbPos.push(currentPosition[i] - t * (currentPosition[i] - previousPosition[i]));
+      }
+
+      this.trail.push(crumbPos);
+      this.distanceSinceLastCrumb -= this.trailSpacing;
+
+      // Limit trail length
+      if (this.trail.length > this.trailMaxLength) {
+        this.trail.shift(); // Remove oldest crumb
+      }
+    }
   }
 }

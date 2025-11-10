@@ -209,10 +209,39 @@ export class ScatterplotMatrix {
       };
     });
 
+    // Transform trail to oriented frame, centered on player
+    const trailLocal = ui.trail && ui.trailEnabled ? ui.trail.map(crumbPos => {
+      const relativePos = crumbPos.map((v, i) => v - player.position[i]);
+      return matVecMultN(orientationInverse, relativePos);
+    }) : [];
+
+    // Transform paths to oriented frame (for rotation challenge)
+    // Some paths can be marked as "fixed" to stay in world coordinates
+    const pathsLocal = ui.paths ? ui.paths.map(pathData => {
+      if (pathData.fixed) {
+        // Fixed paths: don't transform by player orientation
+        return {
+          points: pathData.points.map(point => point.map((v, i) => v - player.position[i])),
+          color: pathData.color,
+          label: pathData.label
+        };
+      } else {
+        // Rotating paths: transform by player orientation
+        return {
+          points: pathData.points.map(point => {
+            const relativePos = point.map((v, i) => v - player.position[i]);
+            return matVecMultN(orientationInverse, relativePos);
+          }),
+          color: pathData.color,
+          label: pathData.label
+        };
+      }
+    }) : [];
+
     // Draw each cell in the matrix
     for (let row = 0; row < this.dimensions; row++) {
       for (let col = 0; col < this.dimensions; col++) {
-        this.renderCell(row, col, playerLocal, turkeysLocal, ui);
+        this.renderCell(row, col, playerLocal, turkeysLocal, ui, trailLocal, pathsLocal);
       }
     }
 
@@ -224,7 +253,7 @@ export class ScatterplotMatrix {
   /**
    * Render a single scatterplot cell
    */
-  renderCell(row, col, playerLocal, turkeysLocal, ui) {
+  renderCell(row, col, playerLocal, turkeysLocal, ui, trailLocal = [], pathsLocal = []) {
     const ctx = this.ctx;
     const x = this.padding + col * this.cellSize;
     const y = this.padding + row * this.cellSize;
@@ -249,13 +278,27 @@ export class ScatterplotMatrix {
     // Draw axes
     this.drawAxes(x, y);
 
+    // Draw paths (for rotation challenge)
+    if (pathsLocal.length > 0) {
+      pathsLocal.forEach(pathData => {
+        this.drawPath(x, y, pathData, row, col);
+      });
+    }
+
+    // Draw trail (behind everything else)
+    if (trailLocal.length > 0) {
+      this.drawTrail(x, y, trailLocal, row, col);
+    }
+
     // Draw turkeys
     turkeysLocal.forEach(turkey => {
       this.drawTurkey(x, y, turkey, row, col);
     });
 
-    // Draw player
-    this.drawPlayer(x, y, playerLocal, row, col, ui);
+    // Draw player (unless explicitly disabled)
+    if (ui.showPlayer !== false) {
+      this.drawPlayer(x, y, playerLocal, row, col, ui);
+    }
 
     // Draw thrust/torque puffs
     this.drawPuffs(x, y, row, col, ui);
@@ -563,6 +606,83 @@ export class ScatterplotMatrix {
       }
       ctx.restore();
     }
+  }
+
+  /**
+   * Draw a smooth path as a connected curve
+   */
+  drawPath(cellX, cellY, pathData, dimI, dimJ) {
+    const ctx = this.ctx;
+    const innerSize = this.cellSize - this.cellPadding * 2;
+    const startX = cellX + this.cellPadding;
+    const startY = cellY + this.cellPadding;
+    const viewRange = this.gridRange;
+
+    const { points, color } = pathData;
+
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // Draw path as connected line segments
+    ctx.beginPath();
+    let firstPoint = true;
+
+    for (let i = 0; i < points.length; i++) {
+      const point = points[i];
+
+      // Project to screen coordinates
+      const px = startX + (point[dimJ] / viewRange + 1) * innerSize / 2;
+      const py = startY + (1 - (point[dimI] / viewRange + 1) / 2) * innerSize;
+
+      if (firstPoint) {
+        ctx.moveTo(px, py);
+        firstPoint = false;
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /**
+   * Draw trail crumbs
+   */
+  drawTrail(cellX, cellY, trailLocal, dimI, dimJ) {
+    const ctx = this.ctx;
+    const innerSize = this.cellSize - this.cellPadding * 2;
+    const startX = cellX + this.cellPadding;
+    const startY = cellY + this.cellPadding;
+    const viewRange = this.gridRange;
+
+    ctx.save();
+
+    // Draw each crumb
+    trailLocal.forEach((crumbPos, index) => {
+      // Project to screen coordinates
+      const px = startX + (crumbPos[dimJ] / viewRange + 1) * innerSize / 2;
+      const py = startY + (1 - (crumbPos[dimI] / viewRange + 1) / 2) * innerSize;
+
+      // Only draw if within visible range
+      if (Math.abs(crumbPos[dimI]) > viewRange || Math.abs(crumbPos[dimJ]) > viewRange) {
+        return;
+      }
+
+      // Fade older crumbs (oldest = start of array)
+      const alpha = 0.3 + (index / trailLocal.length) * 0.5; // 0.3 to 0.8
+
+      // Draw crumb as a small circle
+      ctx.fillStyle = `rgba(255, 200, 100, ${alpha})`; // Golden/yellow color
+      ctx.beginPath();
+      ctx.arc(px, py, 2, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    ctx.restore();
   }
 
   /**

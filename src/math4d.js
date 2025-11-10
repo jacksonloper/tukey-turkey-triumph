@@ -283,3 +283,172 @@ export function lerpMatrix(a, b, t) {
   }
   return result;
 }
+
+/**
+ * Matrix subtraction for NxN matrices
+ */
+export function matSubtractN(a, b) {
+  const n = a.length;
+  const result = [];
+  for (let i = 0; i < n; i++) {
+    result[i] = [];
+    for (let j = 0; j < n; j++) {
+      result[i][j] = a[i][j] - b[i][j];
+    }
+  }
+  return result;
+}
+
+/**
+ * Matrix addition for NxN matrices
+ */
+export function matAddN(a, b) {
+  const n = a.length;
+  const result = [];
+  for (let i = 0; i < n; i++) {
+    result[i] = [];
+    for (let j = 0; j < n; j++) {
+      result[i][j] = a[i][j] + b[i][j];
+    }
+  }
+  return result;
+}
+
+/**
+ * Scale matrix by scalar
+ */
+export function matScaleN(mat, s) {
+  const n = mat.length;
+  const result = [];
+  for (let i = 0; i < n; i++) {
+    result[i] = [];
+    for (let j = 0; j < n; j++) {
+      result[i][j] = mat[i][j] * s;
+    }
+  }
+  return result;
+}
+
+/**
+ * Frobenius norm of a matrix: sqrt(sum of squares of all elements)
+ */
+export function frobeniusNorm(mat) {
+  let sum = 0;
+  for (let i = 0; i < mat.length; i++) {
+    for (let j = 0; j < mat[i].length; j++) {
+      sum += mat[i][j] * mat[i][j];
+    }
+  }
+  return Math.sqrt(sum);
+}
+
+/**
+ * Distance metric on SO(n) between two rotation matrices
+ * Computes ||R^T Q - I||_F (Frobenius norm of relative rotation minus identity)
+ * This is a valid distance metric but NOT the geodesic distance
+ *
+ * @param {Array} R - First rotation matrix (target rotation)
+ * @param {Array} Q - Second rotation matrix (current rotation)
+ * @returns {number} Distance (0 means aligned, increases with misalignment)
+ */
+export function rotationDistanceSO(R, Q) {
+  const n = R.length;
+
+  // Compute R^T
+  const RT = transposeN(R);
+
+  // Compute relative rotation: R^T Q
+  const relativeRotation = matMultN(RT, Q);
+
+  // Compute R^T Q - I
+  const I = identityNxN(n);
+  const diff = matSubtractN(relativeRotation, I);
+
+  // Return Frobenius norm
+  return frobeniusNorm(diff);
+}
+
+/**
+ * Gram-Schmidt orthonormalization for n×n matrices
+ * Converts a matrix to an orthonormal basis
+ */
+function gramSchmidt(mat) {
+  const n = mat.length;
+  const result = [];
+
+  for (let i = 0; i < n; i++) {
+    // Start with the i-th column
+    let v = [];
+    for (let j = 0; j < n; j++) {
+      v.push(mat[j][i]);
+    }
+
+    // Subtract projections onto previous vectors
+    for (let j = 0; j < i; j++) {
+      const u = result[j];
+      let dot = 0;
+      for (let k = 0; k < n; k++) {
+        dot += v[k] * u[k];
+      }
+      for (let k = 0; k < n; k++) {
+        v[k] -= dot * u[k];
+      }
+    }
+
+    // Normalize
+    let norm = 0;
+    for (let j = 0; j < n; j++) {
+      norm += v[j] * v[j];
+    }
+    norm = Math.sqrt(norm);
+
+    if (norm > 1e-10) {
+      for (let j = 0; j < n; j++) {
+        v[j] /= norm;
+      }
+    }
+
+    result.push(v);
+  }
+
+  // Convert back to matrix form (columns are the orthonormal vectors)
+  const ortho = identityNxN(n);
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      ortho[j][i] = result[i][j];
+    }
+  }
+
+  return ortho;
+}
+
+/**
+ * Interpolation on SO(n) using linear interpolation + orthonormalization
+ * NOT a geodesic interpolation - just lerp + Gram-Schmidt
+ * Works robustly for arbitrary rotations unlike geodesic methods
+ * @param {Array} A - Start rotation matrix (n×n)
+ * @param {Array} B - End rotation matrix (n×n)
+ * @param {number} t - Interpolation parameter (0 to 1)
+ * @returns {Array} Interpolated rotation matrix
+ */
+export function interpRotationSO(A, B, t) {
+  const n = A.length;
+
+  // Linear interpolation: (1-t)A + tB
+  const result = identityNxN(n);
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      result[i][j] = (1 - t) * A[i][j] + t * B[i][j];
+    }
+  }
+
+  // Orthonormalize using Gram-Schmidt
+  const ortho = gramSchmidt(result);
+
+  // Ensure determinant is +1 (in SO(n), not just O(n))
+  // This is a simplified check - for a robust implementation we'd compute the actual determinant
+  // For now, rely on Gram-Schmidt preserving orientation
+
+  return ortho;
+}
+
