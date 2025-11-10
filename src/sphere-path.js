@@ -1,5 +1,6 @@
 /**
  * Generate smooth random paths on the unit sphere S^(n-1) in R^n
+ * Also includes simplex generation for geometric challenges
  */
 
 import { vecN, scaleN } from './math4d.js';
@@ -72,6 +73,79 @@ export function generateSpherePath(dimensions, numPoints = 100, numFrequencies =
   }
 
   return path;
+}
+
+/**
+ * Generate a regular simplex in n dimensions
+ * A simplex in n dimensions has n+1 vertices
+ * The vertices are arranged symmetrically and centered at the origin
+ *
+ * @param {number} dimensions - Ambient dimension n
+ * @param {number} radius - Radius for scaling (default 3.0)
+ * @returns {Array} Array of n+1 vertices, each with labels
+ */
+export function generateSimplex(dimensions, radius = 3.0) {
+  const n = dimensions;
+  const numVertices = n + 1;
+
+  // Standard construction of a regular simplex
+  // We'll use the construction where vertices lie on a sphere
+  const vertices = [];
+
+  for (let i = 0; i < numVertices; i++) {
+    const vertex = new Array(n).fill(0);
+
+    // Use the standard simplex construction
+    // Each vertex v_i has coordinates that ensure equal distances
+    for (let j = 0; j < n; j++) {
+      if (j < i) {
+        // Coordinate is a fixed negative value
+        vertex[j] = -1 / Math.sqrt(2 * (j + 1) * (j + 2));
+      } else if (j === i) {
+        // Coordinate is positive to maintain unit length
+        vertex[j] = Math.sqrt((j + 1) / (2 * (j + 2)));
+      } else {
+        // Remaining coordinates are 0
+        vertex[j] = 0;
+      }
+    }
+
+    vertices.push(vertex);
+  }
+
+  // Center the simplex (subtract centroid)
+  const centroid = new Array(n).fill(0);
+  for (let j = 0; j < n; j++) {
+    for (let i = 0; i < numVertices; i++) {
+      centroid[j] += vertices[i][j];
+    }
+    centroid[j] /= numVertices;
+  }
+
+  for (let i = 0; i < numVertices; i++) {
+    for (let j = 0; j < n; j++) {
+      vertices[i][j] -= centroid[j];
+    }
+  }
+
+  // Scale to desired radius
+  // First, compute the average distance from origin to vertices
+  let avgNorm = 0;
+  for (let i = 0; i < numVertices; i++) {
+    const norm = Math.sqrt(vertices[i].reduce((sum, x) => sum + x * x, 0));
+    avgNorm += norm;
+  }
+  avgNorm /= numVertices;
+
+  // Scale all vertices
+  const scale = radius / avgNorm;
+  for (let i = 0; i < numVertices; i++) {
+    for (let j = 0; j < n; j++) {
+      vertices[i][j] *= scale;
+    }
+  }
+
+  return vertices;
 }
 
 /**

@@ -223,7 +223,8 @@ export class ScatterplotMatrix {
         return {
           points: pathData.points.map(point => point.map((v, i) => v - player.position[i])),
           color: pathData.color,
-          label: pathData.label
+          label: pathData.label,
+          vertexLabels: pathData.vertexLabels
         };
       } else {
         // Rotating paths: transform by player orientation
@@ -233,7 +234,8 @@ export class ScatterplotMatrix {
             return matVecMultN(orientationInverse, relativePos);
           }),
           color: pathData.color,
-          label: pathData.label
+          label: pathData.label,
+          vertexLabels: pathData.vertexLabels
         };
       }
     }) : [];
@@ -618,34 +620,63 @@ export class ScatterplotMatrix {
     const startY = cellY + this.cellPadding;
     const viewRange = this.gridRange;
 
-    const { points, color } = pathData;
+    const { points, color, vertexLabels } = pathData;
 
     ctx.save();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
 
-    // Draw path as connected line segments
-    ctx.beginPath();
-    let firstPoint = true;
+    // If vertex labels are provided, draw vertices as points instead of a curve
+    if (vertexLabels && vertexLabels.length > 0) {
+      // Draw vertices as circles with labels
+      for (let i = 0; i < points.length; i++) {
+        const point = points[i];
 
-    for (let i = 0; i < points.length; i++) {
-      const point = points[i];
+        // Project to screen coordinates
+        const px = startX + (point[dimJ] / viewRange + 1) * innerSize / 2;
+        const py = startY + (1 - (point[dimI] / viewRange + 1) / 2) * innerSize;
 
-      // Project to screen coordinates
-      const px = startX + (point[dimJ] / viewRange + 1) * innerSize / 2;
-      const py = startY + (1 - (point[dimI] / viewRange + 1) / 2) * innerSize;
+        // Draw vertex as a circle
+        ctx.fillStyle = color;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(px, py, 4, 0, Math.PI * 2);
+        ctx.fill();
 
-      if (firstPoint) {
-        ctx.moveTo(px, py);
-        firstPoint = false;
-      } else {
-        ctx.lineTo(px, py);
+        // Draw label next to the vertex
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px Courier New';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(vertexLabels[i], px + 8, py);
       }
+    } else {
+      // Draw path as connected line segments (original behavior)
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      ctx.beginPath();
+      let firstPoint = true;
+
+      for (let i = 0; i < points.length; i++) {
+        const point = points[i];
+
+        // Project to screen coordinates
+        const px = startX + (point[dimJ] / viewRange + 1) * innerSize / 2;
+        const py = startY + (1 - (point[dimI] / viewRange + 1) / 2) * innerSize;
+
+        if (firstPoint) {
+          ctx.moveTo(px, py);
+          firstPoint = false;
+        } else {
+          ctx.lineTo(px, py);
+        }
+      }
+
+      ctx.stroke();
     }
 
-    ctx.stroke();
     ctx.restore();
   }
 

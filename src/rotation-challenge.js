@@ -14,14 +14,16 @@ import {
 import { ScatterplotMatrix } from './scatterplot.js';
 import {
   generateSpherePath,
+  generateSimplex,
   sampleRandomRotation,
   rotatePath
 } from './sphere-path.js';
 
 export class RotationChallenge {
-  constructor(canvas, dimensions = 4) {
+  constructor(canvas, dimensions = 4, simplexMode = false) {
     this.dimensions = dimensions;
     this.canvas = canvas;
+    this.simplexMode = simplexMode;
 
     // Player's current orientation (what they control)
     this.playerOrientation = identityNxN(dimensions);
@@ -32,6 +34,9 @@ export class RotationChallenge {
     // The original path and rotated target path
     this.originalPath = null;
     this.targetPath = null;
+
+    // Vertex labels (for simplex mode)
+    this.vertexLabels = null;
 
     // Rotation state
     this.rotationSpeed = Math.PI / 2; // rad/sec
@@ -85,8 +90,20 @@ export class RotationChallenge {
    * Generate a new challenge with random rotation
    */
   newChallenge() {
-    // Generate a smooth random path on the sphere
-    this.originalPath = generateSpherePath(this.dimensions, 100, 3);
+    if (this.simplexMode) {
+      // Generate a simplex with labeled vertices
+      this.originalPath = generateSimplex(this.dimensions, 3);
+
+      // Create labels for vertices (0, 1, 2, ...)
+      this.vertexLabels = [];
+      for (let i = 0; i < this.originalPath.length; i++) {
+        this.vertexLabels.push(String(i));
+      }
+    } else {
+      // Generate a smooth random path on the sphere
+      this.originalPath = generateSpherePath(this.dimensions, 100, 3);
+      this.vertexLabels = null;
+    }
 
     // Sample a random rotation
     this.targetRotation = sampleRandomRotation(this.dimensions);
@@ -175,6 +192,16 @@ export class RotationChallenge {
   }
 
   /**
+   * Toggle simplex mode on/off
+   */
+  setSimplexMode(enabled) {
+    if (this.simplexMode !== enabled) {
+      this.simplexMode = enabled;
+      this.newChallenge();
+    }
+  }
+
+  /**
    * Render the challenge
    */
   render() {
@@ -187,13 +214,27 @@ export class RotationChallenge {
     // Render both paths
     // Original path (orange) stays fixed in world space
     // Target path (cyan) rotates with player orientation
-    this.scatterplot.render(player, [], {
+    const pathOptions = {
       showPlayer: false, // Don't show the central dot
       paths: [
-        { points: this.originalPath, color: 'rgba(255, 140, 0, 0.8)', label: 'original', fixed: true },
-        { points: this.targetPath, color: 'rgba(0, 255, 255, 0.8)', label: 'target', fixed: false }
+        {
+          points: this.originalPath,
+          color: 'rgba(255, 140, 0, 0.8)',
+          label: 'original',
+          fixed: true,
+          vertexLabels: this.simplexMode ? this.vertexLabels : null
+        },
+        {
+          points: this.targetPath,
+          color: 'rgba(0, 255, 255, 0.8)',
+          label: 'target',
+          fixed: false,
+          vertexLabels: this.simplexMode ? this.vertexLabels : null
+        }
       ]
-    });
+    };
+
+    this.scatterplot.render(player, [], pathOptions);
   }
 
   /**
