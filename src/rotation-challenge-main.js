@@ -11,12 +11,14 @@ function init() {
   const newChallengeButton = document.getElementById('new-challenge-button');
   const halfDistanceButton = document.getElementById('half-distance-button');
   const dimensionSelect = document.getElementById('dimension-select');
+  const simplexModeToggle = document.getElementById('simplex-mode-toggle');
   const subtitle = document.getElementById('subtitle');
   const scrollHint = document.getElementById('scroll-hint');
 
   // Create challenge instance
   let currentDimensions = parseInt(dimensionSelect.value) || 4;
-  let challenge = new RotationChallenge(canvas, currentDimensions);
+  let simplexMode = simplexModeToggle ? simplexModeToggle.checked : false;
+  let challenge = new RotationChallenge(canvas, currentDimensions, simplexMode);
 
   // Update subtitle to reflect current dimension
   function updateSubtitle(dim) {
@@ -44,7 +46,8 @@ function init() {
 
       // Create a new challenge with the new dimensions
       currentDimensions = newDimensions;
-      challenge = new RotationChallenge(canvas, currentDimensions);
+      simplexMode = simplexModeToggle ? simplexModeToggle.checked : false;
+      challenge = new RotationChallenge(canvas, currentDimensions, simplexMode);
 
       // Update subtitle
       updateSubtitle(currentDimensions);
@@ -53,6 +56,14 @@ function init() {
       challenge.start();
     }
   });
+
+  // Simplex mode toggle wiring
+  if (simplexModeToggle) {
+    simplexModeToggle.addEventListener('change', () => {
+      simplexMode = simplexModeToggle.checked;
+      challenge.setSimplexMode(simplexMode);
+    });
+  }
 
   // Hide scroll hint only when at least half of the canvas is visible
   const updateScrollHint = () => {
