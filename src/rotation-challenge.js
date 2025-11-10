@@ -224,7 +224,7 @@ export class RotationChallenge {
         this.challengeStatusEl.textContent = 'Getting Warmer...';
         this.challengeStatusEl.style.color = '#ff9900';
       } else {
-        this.challengeStatusEl.textContent = 'Rotating...';
+        this.challengeStatusEl.textContent = 'Keep trying!';
         this.challengeStatusEl.style.color = '#ffffff';
       }
     }
