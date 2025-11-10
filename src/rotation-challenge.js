@@ -214,13 +214,12 @@ export class RotationChallenge {
   }
 
   /**
-   * Move halfway toward the target rotation (Zeno's paradox style)
+   * Auto-rotate partway toward the target rotation
    */
   halfTheDistance() {
     if (this.isAnimatingHalfway) return; // Already animating
 
-    // Use interpRotationSO which uses robust Gram-Schmidt approach
-    // No need for manual log/exp computation
+    // Interpolate halfway toward target using linear interp + Gram-Schmidt
     const targetOrientation = interpRotationSO(
       this.playerOrientation,
       this.targetRotation,
