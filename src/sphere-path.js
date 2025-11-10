@@ -77,69 +77,48 @@ export function generateSpherePath(dimensions, numPoints = 100, numFrequencies =
 
 /**
  * Generate a regular simplex in n dimensions
- * A simplex in n dimensions has n+1 vertices
- * The vertices are arranged symmetrically and centered at the origin
+ * Uses the canonical construction: p_k = e_k - (1/N)*1 for k=0..N-1
+ * This produces a truly regular simplex with all edge lengths equal
  *
  * @param {number} dimensions - Ambient dimension n
  * @param {number} radius - Radius for scaling (default 3.0)
- * @returns {Array} Array of n+1 vertices, each with labels
+ * @returns {Array} Array of n+1 vertices
  */
 export function generateSimplex(dimensions, radius = 3.0) {
   const n = dimensions;
-  const numVertices = n + 1;
+  const N = n + 1;  // Number of vertices
 
-  // Standard construction of a regular simplex
-  // We'll use the construction where vertices lie on a sphere
+  // Canonical construction: p_k = e_k - (1/N)*1
+  // We work in R^N, then project to R^n by dropping last coordinate
   const vertices = [];
 
-  for (let i = 0; i < numVertices; i++) {
+  for (let k = 0; k < N; k++) {
     const vertex = new Array(n).fill(0);
 
-    // Use the standard simplex construction
-    // Each vertex v_i has coordinates that ensure equal distances
+    // For k < n: vertex[k] = 1 - 1/N, others = -1/N
+    // For k = n: all coordinates = -1/N
     for (let j = 0; j < n; j++) {
-      if (j < i) {
-        // Coordinate is a fixed negative value
-        vertex[j] = -1 / Math.sqrt(2 * (j + 1) * (j + 2));
-      } else if (j === i) {
-        // Coordinate is positive to maintain unit length
-        vertex[j] = Math.sqrt((j + 1) / (2 * (j + 2)));
+      if (j === k) {
+        vertex[j] = 1 - 1/N;
       } else {
-        // Remaining coordinates are 0
-        vertex[j] = 0;
+        vertex[j] = -1/N;
       }
     }
 
     vertices.push(vertex);
   }
 
-  // Center the simplex (subtract centroid)
-  const centroid = new Array(n).fill(0);
-  for (let j = 0; j < n; j++) {
-    for (let i = 0; i < numVertices; i++) {
-      centroid[j] += vertices[i][j];
-    }
-    centroid[j] /= numVertices;
-  }
-
-  for (let i = 0; i < numVertices; i++) {
-    for (let j = 0; j < n; j++) {
-      vertices[i][j] -= centroid[j];
-    }
-  }
-
-  // Scale to desired radius
-  // First, compute the average distance from origin to vertices
+  // Compute current average norm
   let avgNorm = 0;
-  for (let i = 0; i < numVertices; i++) {
+  for (let i = 0; i < N; i++) {
     const norm = Math.sqrt(vertices[i].reduce((sum, x) => sum + x * x, 0));
     avgNorm += norm;
   }
-  avgNorm /= numVertices;
+  avgNorm /= N;
 
-  // Scale all vertices
+  // Scale to desired radius
   const scale = radius / avgNorm;
-  for (let i = 0; i < numVertices; i++) {
+  for (let i = 0; i < N; i++) {
     for (let j = 0; j < n; j++) {
       vertices[i][j] *= scale;
     }
@@ -189,6 +168,68 @@ export function constructFourierDirections(n, m = 1) {
 }
 
 /**
+ * Normalize a vector in place
+ */
+function normalizeInPlace(vec) {
+  const norm = Math.sqrt(vec.reduce((sum, x) => sum + x * x, 0));
+  if (norm > 1e-10) {
+    for (let i = 0; i < vec.length; i++) {
+      vec[i] /= norm;
+    }
+  }
+}
+
+/**
+ * Solve linear system Ax = b using Gaussian elimination with partial pivoting
+ * @param {Array} A - n×n matrix (will be modified)
+ * @param {Array} b - n-vector (will be modified)
+ * @returns {Array} solution vector x
+ */
+function gaussianSolve(A, b) {
+  const n = A.length;
+
+  // Make copies to avoid modifying originals
+  const M = A.map(row => [...row]);
+  const y = [...b];
+
+  // Forward elimination with partial pivoting
+  for (let i = 0; i < n; i++) {
+    // Find pivot
+    let maxRow = i;
+    for (let k = i + 1; k < n; k++) {
+      if (Math.abs(M[k][i]) > Math.abs(M[maxRow][i])) {
+        maxRow = k;
+      }
+    }
+
+    // Swap rows
+    [M[i], M[maxRow]] = [M[maxRow], M[i]];
+    [y[i], y[maxRow]] = [y[maxRow], y[i]];
+
+    // Eliminate column
+    for (let k = i + 1; k < n; k++) {
+      const factor = M[k][i] / M[i][i];
+      y[k] -= factor * y[i];
+      for (let j = i; j < n; j++) {
+        M[k][j] -= factor * M[i][j];
+      }
+    }
+  }
+
+  // Back substitution
+  const x = new Array(n);
+  for (let i = n - 1; i >= 0; i--) {
+    x[i] = y[i];
+    for (let j = i + 1; j < n; j++) {
+      x[i] -= M[i][j] * x[j];
+    }
+    x[i] /= M[i][i];
+  }
+
+  return x;
+}
+
+/**
  * Generate a rotation matrix that orients a simplex to appear circular in (D1, D2)
  * Uses Fourier mode projection to create regular polygon arrangement
  *
@@ -200,82 +241,77 @@ export function generateCircularOrientation(dimensions, vertices) {
   const n = dimensions;
   const N = n + 1;  // Number of vertices
 
-  // Get Fourier mode directions (these are in R^(N) vertex-coordinate space)
-  const { u, v } = constructFourierDirections(n, 1);
+  // Matrix V: rows are vertices[i] in R^n
+  const V = vertices; // shape (N x n)
 
-  // Convert Fourier directions to spatial directions in R^n
-  // direction_u = sum_i u[i] * vertex_i
-  const dirU = new Array(n).fill(0);
-  const dirV = new Array(n).fill(0);
+  // Target regular N-gon angles
+  const angles = [];
+  for (let k = 0; k < N; k++) {
+    angles.push((2 * Math.PI * k) / N);
+  }
 
-  for (let i = 0; i < N; i++) {
-    for (let j = 0; j < n; j++) {
-      dirU[j] += u[i] * vertices[i][j];
-      dirV[j] += v[i] * vertices[i][j];
+  // Cos/Sin patterns, centered to lie in the sum-zero subspace
+  const cosVals = angles.map(a => Math.cos(a));
+  const sinVals = angles.map(a => Math.sin(a));
+  const meanCos = cosVals.reduce((s, x) => s + x, 0) / N;
+  const meanSin = sinVals.reduce((s, x) => s + x, 0) / N;
+  for (let k = 0; k < N; k++) {
+    cosVals[k] -= meanCos;
+    sinVals[k] -= meanSin;
+  }
+
+  // Solve V * a = cosVals,  V * b = sinVals using least squares
+  // Build normal equations (V^T V) a = V^T cosVals
+  function solveDirection(target) {
+    const ATA = Array.from({ length: n }, () => new Array(n).fill(0));
+    const ATy = new Array(n).fill(0);
+
+    for (let i = 0; i < N; i++) {
+      const row = V[i];
+      const ti = target[i];
+      for (let j = 0; j < n; j++) {
+        ATy[j] += row[j] * ti;
+        for (let k = 0; k < n; k++) {
+          ATA[j][k] += row[j] * row[k];
+        }
+      }
     }
+
+    // Solve ATA * x = ATy
+    return gaussianSolve(ATA, ATy);
   }
 
-  // Normalize dirU and dirV
-  const normU = Math.sqrt(dirU.reduce((sum, x) => sum + x * x, 0));
-  const normV = Math.sqrt(dirV.reduce((sum, x) => sum + x * x, 0));
+  const dirU = solveDirection(cosVals);
+  const dirVraw = solveDirection(sinVals);
 
-  for (let j = 0; j < n; j++) {
-    dirU[j] /= normU;
-    dirV[j] /= normV;
-  }
+  // Orthonormalize dirU, dirV
+  normalizeInPlace(dirU);
 
-  // Make dirV orthogonal to dirU (Gram-Schmidt)
-  const dot = dirU.reduce((sum, val, i) => sum + val * dirV[i], 0);
-  for (let j = 0; j < n; j++) {
-    dirV[j] -= dot * dirU[j];
-  }
-
-  // Re-normalize dirV
-  const normV2 = Math.sqrt(dirV.reduce((sum, x) => sum + x * x, 0));
-  for (let j = 0; j < n; j++) {
-    dirV[j] /= normV2;
-  }
+  let dot = 0;
+  for (let i = 0; i < n; i++) dot += dirU[i] * dirVraw[i];
+  const dirV = dirVraw.map((v, i) => v - dot * dirU[i]);
+  normalizeInPlace(dirV);
 
   // Build rotation matrix with dirU as first row, dirV as second row
   // Complete with remaining orthonormal vectors via Gram-Schmidt
   const R = [];
-  R.push([...dirU]);
-  R.push([...dirV]);
+  R.push(dirU.slice());
+  R.push(dirV.slice());
 
   // Add remaining basis vectors
   for (let i = 2; i < n; i++) {
-    // Start with standard basis vector
-    const newVec = new Array(n).fill(0);
-    newVec[i] = 1;
+    const v = new Array(n).fill(0);
+    v[i] = 1;
 
-    // Orthogonalize against all previous vectors
-    for (let j = 0; j < i; j++) {
-      const dot = newVec.reduce((sum, val, k) => sum + val * R[j][k], 0);
-      for (let k = 0; k < n; k++) {
-        newVec[k] -= dot * R[j][k];
-      }
+    // Orthogonalize against all previous rows
+    for (let j = 0; j < R.length; j++) {
+      let proj = 0;
+      for (let k = 0; k < n; k++) proj += v[k] * R[j][k];
+      for (let k = 0; k < n; k++) v[k] -= proj * R[j][k];
     }
 
-    // Normalize
-    const norm = Math.sqrt(newVec.reduce((sum, x) => sum + x * x, 0));
-    if (norm > 1e-10) {
-      R.push(newVec.map(x => x / norm));
-    } else {
-      // Try a random vector if standard basis failed
-      const randVec = new Array(n).fill(0).map(() => Math.random() - 0.5);
-
-      // Orthogonalize against all previous vectors
-      for (let j = 0; j < i; j++) {
-        const dot = randVec.reduce((sum, val, k) => sum + val * R[j][k], 0);
-        for (let k = 0; k < n; k++) {
-          randVec[k] -= dot * R[j][k];
-        }
-      }
-
-      // Normalize
-      const norm2 = Math.sqrt(randVec.reduce((sum, x) => sum + x * x, 0));
-      R.push(randVec.map(x => x / norm2));
-    }
+    normalizeInPlace(v);
+    R.push(v);
   }
 
   return R;
