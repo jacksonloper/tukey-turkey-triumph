@@ -15,6 +15,7 @@ import { ScatterplotMatrix } from './scatterplot.js';
 import {
   generateSpherePath,
   generateSimplex,
+  generateCircularOrientation,
   sampleRandomRotation,
   rotatePath
 } from './sphere-path.js';
@@ -99,14 +100,17 @@ export class RotationChallenge {
       for (let i = 0; i < this.originalPath.length; i++) {
         this.vertexLabels.push(String(i));
       }
+
+      // For simplex mode, use a rotation that creates a circular arrangement in (D1, D2)
+      this.targetRotation = generateCircularOrientation(this.dimensions);
     } else {
       // Generate a smooth random path on the sphere
       this.originalPath = generateSpherePath(this.dimensions, 100, 3);
       this.vertexLabels = null;
-    }
 
-    // Sample a random rotation
-    this.targetRotation = sampleRandomRotation(this.dimensions);
+      // Sample a random rotation
+      this.targetRotation = sampleRandomRotation(this.dimensions);
+    }
 
     // Apply rotation to create target path
     this.targetPath = rotatePath(this.originalPath, this.targetRotation);

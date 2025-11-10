@@ -3,7 +3,7 @@
  * Also includes simplex generation for geometric challenges
  */
 
-import { vecN, scaleN } from './math4d.js';
+import { vecN, scaleN, identityNxN, rotationND, matMultN } from './math4d.js';
 
 /**
  * Generate a smooth random path
@@ -146,6 +146,40 @@ export function generateSimplex(dimensions, radius = 3.0) {
   }
 
   return vertices;
+}
+
+/**
+ * Generate a rotation that orients a simplex to appear circular in the (x0, x1) projection
+ * This creates a nice visualization where vertices are evenly distributed in the first 2D view
+ *
+ * @param {number} dimensions - Ambient dimension n
+ * @returns {Array} n×n rotation matrix
+ */
+export function generateCircularOrientation(dimensions) {
+  const n = dimensions;
+  let R = identityNxN(n);
+
+  // Apply a series of rotations to spread vertices nicely
+  // Rotate from higher dimensions into the (x0, x1) plane
+
+  // For each dimension beyond the second, rotate it partially into the viewing plane
+  for (let i = 2; i < n; i++) {
+    // Rotate dimension i toward dimension 0
+    const angle = Math.PI / (2 * i); // Smaller angles for higher dimensions
+    const rot = rotationND(n, 0, i, angle);
+    R = matMultN(R, rot);
+
+    // Also rotate dimension i toward dimension 1
+    const rot2 = rotationND(n, 1, i, angle * 0.7);
+    R = matMultN(R, rot2);
+  }
+
+  // Final rotation in the (0,1) plane for nice orientation
+  const finalAngle = Math.PI / 8;
+  const finalRot = rotationND(n, 0, 1, finalAngle);
+  R = matMultN(R, finalRot);
+
+  return R;
 }
 
 /**
