@@ -77,7 +77,7 @@ export function generateSpherePath(dimensions, numPoints = 100, numFrequencies =
 
 /**
  * Generate a regular simplex in n dimensions
- * Uses the canonical construction: p_k = e_k - (1/N)*1 for k=0..N-1
+ * Uses the canonical construction in R^(n+1) then projects to R^n
  * This produces a truly regular simplex with all edge lengths equal
  *
  * @param {number} dimensions - Ambient dimension n
@@ -88,23 +88,62 @@ export function generateSimplex(dimensions, radius = 3.0) {
   const n = dimensions;
   const N = n + 1;  // Number of vertices
 
-  // Canonical construction: p_k = e_k - (1/N)*1
-  // We work in R^N, then project to R^n by dropping last coordinate
-  const vertices = [];
-
+  // Start with canonical simplex in R^(N): p_k = e_k - (1/N)*1
+  // These lie in the hyperplane sum(x) = 0, which has dimension n
+  const verticesRN = [];
   for (let k = 0; k < N; k++) {
-    const vertex = new Array(n).fill(0);
+    const vertex = new Array(N).fill(-1/N);
+    vertex[k] = 1 - 1/N;
+    verticesRN.push(vertex);
+  }
 
-    // For k < n: vertex[k] = 1 - 1/N, others = -1/N
-    // For k = n: all coordinates = -1/N
-    for (let j = 0; j < n; j++) {
-      if (j === k) {
-        vertex[j] = 1 - 1/N;
-      } else {
-        vertex[j] = -1/N;
+  // Build orthonormal basis for the sum-zero hyperplane in R^N
+  // Start with vectors perpendicular to (1,1,...,1)
+  const basis = [];
+
+  for (let i = 0; i < n; i++) {
+    // Start with a vector that has +1 in position i and -1 in position N-1
+    const vec = new Array(N).fill(0);
+    vec[i] = 1;
+    vec[N - 1] = -1;
+
+    // Orthogonalize against previous basis vectors (Gram-Schmidt)
+    for (let j = 0; j < basis.length; j++) {
+      let dot = 0;
+      for (let k = 0; k < N; k++) {
+        dot += vec[k] * basis[j][k];
+      }
+      for (let k = 0; k < N; k++) {
+        vec[k] -= dot * basis[j][k];
       }
     }
 
+    // Normalize
+    let norm = 0;
+    for (let k = 0; k < N; k++) {
+      norm += vec[k] * vec[k];
+    }
+    norm = Math.sqrt(norm);
+
+    for (let k = 0; k < N; k++) {
+      vec[k] /= norm;
+    }
+
+    basis.push(vec);
+  }
+
+  // Project vertices from R^N to R^n using the orthonormal basis
+  const vertices = [];
+  for (let i = 0; i < N; i++) {
+    const vertex = new Array(n).fill(0);
+    for (let j = 0; j < n; j++) {
+      // Project onto basis[j]
+      let coord = 0;
+      for (let k = 0; k < N; k++) {
+        coord += verticesRN[i][k] * basis[j][k];
+      }
+      vertex[j] = coord;
+    }
     vertices.push(vertex);
   }
 
