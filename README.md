@@ -1,6 +1,6 @@
 # Rotation Matching Challenge 🔄
 
-Master rotations in SO(n) by aligning curves through Tukey's scatterplot matrix (the draughtsman's display). See all pairwise projections simultaneously as you search for the hidden rotation.
+Master rotations in SO(n) by aligning curves through Tukey's scatterplot matrix (the draughtsman's display). See all pairwise projections simultaneously as you search for the hidden rotation.  See live [here](https://jacksonloper.github.io/tukey-turkey-triumph/).
 
 ## Overview
 
