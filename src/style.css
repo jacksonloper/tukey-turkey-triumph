@@ -293,6 +293,59 @@ button:active {
   box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2);
 }
 
+.display-mode-selector {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  color: #e6f3ff;
+  font-size: 0.95em;
+  margin-top: 0.5rem;
+}
+.display-mode-selector label {
+  font-weight: 600;
+}
+.display-mode-selector select {
+  background-color: #1a1a1a;
+  color: #e6f3ff;
+  border: 2px solid #646cff;
+  border-radius: 6px;
+  padding: 0.4em 0.8em;
+  font-size: 1em;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.display-mode-selector select:hover {
+  border-color: #535bf2;
+  background-color: #2a2a2a;
+}
+.display-mode-selector select:focus {
+  outline: none;
+  border-color: #00d4ff;
+  box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2);
+}
+
+.grid-toggle {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  color: #e6f3ff;
+  font-size: 0.95em;
+  margin-top: 0.5rem;
+}
+.grid-toggle label {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  cursor: pointer;
+}
+.grid-toggle input[type="checkbox"] {
+  accent-color: #646cff;
+  cursor: pointer;
+}
+
 footer {
   text-align: center;
   padding: 2rem 0 1rem;

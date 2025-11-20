@@ -272,8 +272,10 @@ export class ScatterplotMatrix {
       return;
     }
 
-    // Draw world-aligned fixed grid projected into this view (same for every cell)
-    this.drawWorldGrid(x, y, row, col);
+    // Draw world-aligned fixed grid projected into this view (only if showGrid is true)
+    if (ui.showGrid !== false) {
+      this.drawWorldGrid(x, y, row, col);
+    }
 
     // Draw axes
     this.drawAxes(x, y);
@@ -618,8 +620,132 @@ export class ScatterplotMatrix {
     const startY = cellY + this.cellPadding;
     const viewRange = this.gridRange;
 
-    const { points, color } = pathData;
+    const { points, color, numbered, numDots = 6, squirrel, progress = 0 } = pathData;
 
+    // Helper to project point to screen coordinates
+    const projectPoint = (point) => {
+      const px = startX + (point[dimJ] / viewRange + 1) * innerSize / 2;
+      const py = startY + (1 - (point[dimI] / viewRange + 1) / 2) * innerSize;
+      return [px, py];
+    };
+
+    // Rainbow mode
+    if (color === 'rainbow') {
+      ctx.save();
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Draw path segments with gradient colors
+      for (let i = 0; i < points.length - 1; i++) {
+        const t = i / (points.length - 1);
+        const hue = t * 360;
+        ctx.strokeStyle = `hsl(${hue}, 100%, 60%)`;
+        
+        const [px1, py1] = projectPoint(points[i]);
+        const [px2, py2] = projectPoint(points[i + 1]);
+        
+        ctx.beginPath();
+        ctx.moveTo(px1, py1);
+        ctx.lineTo(px2, py2);
+        ctx.stroke();
+      }
+      ctx.restore();
+      return;
+    }
+
+    // Numbered mode - show path with numbered dots
+    if (numbered) {
+      ctx.save();
+      
+      // Draw faint path line
+      ctx.strokeStyle = color.replace('0.8', '0.3');
+      ctx.lineWidth = 1;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      ctx.beginPath();
+      let firstPoint = true;
+      for (let i = 0; i < points.length; i++) {
+        const [px, py] = projectPoint(points[i]);
+        if (firstPoint) {
+          ctx.moveTo(px, py);
+          firstPoint = false;
+        } else {
+          ctx.lineTo(px, py);
+        }
+      }
+      ctx.stroke();
+
+      // Draw numbered dots
+      for (let n = 0; n < numDots; n++) {
+        const idx = Math.floor(n * (points.length - 1) / (numDots - 1));
+        const point = points[idx];
+        const [px, py] = projectPoint(point);
+        
+        // Draw circle
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(px, py, 6, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Draw number
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 10px Courier New';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText((n + 1).toString(), px, py);
+      }
+      
+      ctx.restore();
+      return;
+    }
+
+    // Squirrel mode - show animated marker
+    if (squirrel) {
+      ctx.save();
+      
+      // Draw faint path line
+      ctx.strokeStyle = color.replace('0.8', '0.3');
+      ctx.lineWidth = 1;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      ctx.beginPath();
+      let firstPoint = true;
+      for (let i = 0; i < points.length; i++) {
+        const [px, py] = projectPoint(points[i]);
+        if (firstPoint) {
+          ctx.moveTo(px, py);
+          firstPoint = false;
+        } else {
+          ctx.lineTo(px, py);
+        }
+      }
+      ctx.stroke();
+
+      // Draw animated squirrel marker
+      const idx = Math.floor(progress * (points.length - 1));
+      const point = points[idx];
+      const [px, py] = projectPoint(point);
+      
+      // Draw squirrel as a filled circle with ears
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(px, py, 5, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      // Draw simple ears
+      ctx.beginPath();
+      ctx.arc(px - 3, py - 4, 2, 0, 2 * Math.PI);
+      ctx.arc(px + 3, py - 4, 2, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      ctx.restore();
+      return;
+    }
+
+    // Vanilla mode - solid color path
     ctx.save();
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
@@ -631,11 +757,7 @@ export class ScatterplotMatrix {
     let firstPoint = true;
 
     for (let i = 0; i < points.length; i++) {
-      const point = points[i];
-
-      // Project to screen coordinates
-      const px = startX + (point[dimJ] / viewRange + 1) * innerSize / 2;
-      const py = startY + (1 - (point[dimI] / viewRange + 1) / 2) * innerSize;
+      const [px, py] = projectPoint(points[i]);
 
       if (firstPoint) {
         ctx.moveTo(px, py);

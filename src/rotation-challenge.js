@@ -33,6 +33,10 @@ export class RotationChallenge {
     this.originalPath = null;
     this.targetPath = null;
 
+    // Display settings
+    this.displayMode = 'vanilla'; // 'vanilla', 'rainbow', 'numbered', 'squirrel'
+    this.gridEnabled = false;
+
     // Rotation state
     this.rotationSpeed = Math.PI / 2; // rad/sec
     this.rotationPlanes = this.generateRotationPlanes(dimensions);
@@ -49,6 +53,10 @@ export class RotationChallenge {
     this.halfwayDuration = 0.5; // seconds
     this.halfwayStartOrientation = null;
     this.halfwayTargetOrientation = null;
+
+    // Squirrel mode animation state
+    this.squirrelProgress = 0;
+    this.squirrelSpeed = 0.5; // cycles per second
 
     // Rendering
     this.scatterplot = new ScatterplotMatrix(canvas, dimensions);
@@ -109,6 +117,12 @@ export class RotationChallenge {
    * Update game state
    */
   update(dt) {
+    // Update squirrel animation progress
+    if (this.displayMode === 'squirrel') {
+      this.squirrelProgress += dt * this.squirrelSpeed;
+      this.squirrelProgress = this.squirrelProgress % 1.0; // Keep in [0,1)
+    }
+
     // Handle halfway animation (takes precedence over manual rotation)
     if (this.isAnimatingHalfway) {
       this.halfwayProgress += dt / this.halfwayDuration;
@@ -184,15 +198,40 @@ export class RotationChallenge {
       orientation: this.playerOrientation
     };
 
-    // Render both paths
-    // Original path (orange) stays fixed in world space
-    // Target path (cyan) rotates with player orientation
-    this.scatterplot.render(player, [], {
-      showPlayer: false, // Don't show the central dot
-      paths: [
+    // Prepare path rendering based on display mode
+    let pathsToRender = [];
+    
+    if (this.displayMode === 'vanilla') {
+      // Original solid color mode
+      pathsToRender = [
         { points: this.originalPath, color: 'rgba(255, 140, 0, 0.8)', label: 'original', fixed: true },
         { points: this.targetPath, color: 'rgba(0, 255, 255, 0.8)', label: 'target', fixed: false }
-      ]
+      ];
+    } else if (this.displayMode === 'rainbow') {
+      // Rainbow mode - both paths are rainbows with matched colors
+      pathsToRender = [
+        { points: this.originalPath, color: 'rainbow', label: 'original', fixed: true },
+        { points: this.targetPath, color: 'rainbow', label: 'target', fixed: false }
+      ];
+    } else if (this.displayMode === 'numbered') {
+      // Numbered mode - show 6 numbered dots along each path
+      pathsToRender = [
+        { points: this.originalPath, color: 'rgba(255, 140, 0, 0.8)', label: 'original', fixed: true, numbered: true, numDots: 6 },
+        { points: this.targetPath, color: 'rgba(0, 255, 255, 0.8)', label: 'target', fixed: false, numbered: true, numDots: 6 }
+      ];
+    } else if (this.displayMode === 'squirrel') {
+      // Squirrel mode - show animated markers moving along paths
+      pathsToRender = [
+        { points: this.originalPath, color: 'rgba(255, 140, 0, 0.8)', label: 'original', fixed: true, squirrel: true, progress: this.squirrelProgress },
+        { points: this.targetPath, color: 'rgba(0, 255, 255, 0.8)', label: 'target', fixed: false, squirrel: true, progress: this.squirrelProgress }
+      ];
+    }
+
+    // Render both paths
+    this.scatterplot.render(player, [], {
+      showPlayer: false,
+      showGrid: this.gridEnabled,
+      paths: pathsToRender
     });
   }
 
@@ -238,6 +277,20 @@ export class RotationChallenge {
    */
   onWin() {
     console.log('🎉 Challenge completed!');
+  }
+
+  /**
+   * Set display mode
+   */
+  setDisplayMode(mode) {
+    this.displayMode = mode;
+  }
+
+  /**
+   * Set grid enabled state
+   */
+  setGridEnabled(enabled) {
+    this.gridEnabled = enabled;
   }
 
   /**
