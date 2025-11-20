@@ -210,3 +210,24 @@ export function computeAlignment(path1, path2) {
   const score = Math.max(0, 1 - avgDist / 2);
   return score;
 }
+
+/**
+ * Compute cumulative arc length along a path
+ * Returns an array of cumulative distances from the start
+ * @param {Array} path - Array of n-dimensional points
+ * @returns {Array} Cumulative arc lengths [0, d1, d1+d2, ..., total_length]
+ */
+export function computeArcLengths(path) {
+  const arcLengths = [0];
+  let cumulative = 0;
+  
+  for (let i = 1; i < path.length; i++) {
+    const dist = Math.sqrt(
+      path[i].reduce((sum, val, j) => sum + (val - path[i-1][j]) ** 2, 0)
+    );
+    cumulative += dist;
+    arcLengths.push(cumulative);
+  }
+  
+  return arcLengths;
+}

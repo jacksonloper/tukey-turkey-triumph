@@ -227,7 +227,8 @@ export class ScatterplotMatrix {
           numbered: pathData.numbered,
           numDots: pathData.numDots,
           squirrel: pathData.squirrel,
-          progress: pathData.progress
+          progress: pathData.progress,
+          arcLengths: pathData.arcLengths
         };
       } else {
         // Rotating paths: transform by player orientation
@@ -241,7 +242,8 @@ export class ScatterplotMatrix {
           numbered: pathData.numbered,
           numDots: pathData.numDots,
           squirrel: pathData.squirrel,
-          progress: pathData.progress
+          progress: pathData.progress,
+          arcLengths: pathData.arcLengths
         };
       }
     }) : [];
@@ -628,7 +630,7 @@ export class ScatterplotMatrix {
     const startY = cellY + this.cellPadding;
     const viewRange = this.gridRange;
 
-    const { points, color, numbered, numDots = 6, squirrel, progress = 0 } = pathData;
+    const { points, color, numbered, numDots = 6, squirrel, progress = 0, arcLengths } = pathData;
 
     // Helper to project point to screen coordinates
     const projectPoint = (point) => {
@@ -733,7 +735,30 @@ export class ScatterplotMatrix {
       ctx.stroke();
 
       // Draw animated squirrel marker
-      const idx = Math.floor(progress * (points.length - 1));
+      // Use arc length parameterization for constant speed
+      let idx;
+      if (arcLengths && arcLengths.length > 0) {
+        // Find point index based on arc length progress
+        const totalLength = arcLengths[arcLengths.length - 1];
+        const targetLength = progress * totalLength;
+        
+        // Binary search for the right segment
+        idx = 0;
+        for (let i = 0; i < arcLengths.length - 1; i++) {
+          if (arcLengths[i] <= targetLength && targetLength < arcLengths[i + 1]) {
+            idx = i;
+            break;
+          }
+        }
+        // Handle edge case where we're at the very end
+        if (targetLength >= totalLength - 0.001) {
+          idx = points.length - 1;
+        }
+      } else {
+        // Fallback to simple linear interpolation
+        idx = Math.floor(progress * (points.length - 1));
+      }
+      
       const point = points[idx];
       const [px, py] = projectPoint(point);
       

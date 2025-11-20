@@ -112,9 +112,12 @@ h1 {
 #pardoned-count,
 #total-count,
 #movement-status,
-#distance-display {
+#distance-display,
+#alignment-score,
+#best-score {
   color: #00ff88;
   font-weight: bold;
+  font-size: 1.1em;
 }
 
 #game-canvas {

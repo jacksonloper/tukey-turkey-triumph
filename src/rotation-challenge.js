@@ -15,7 +15,8 @@ import { ScatterplotMatrix } from './scatterplot.js';
 import {
   generateSpherePath,
   sampleRandomRotation,
-  rotatePath
+  rotatePath,
+  computeArcLengths
 } from './sphere-path.js';
 
 export class RotationChallenge {
@@ -32,6 +33,10 @@ export class RotationChallenge {
     // The original path and rotated target path
     this.originalPath = null;
     this.targetPath = null;
+    
+    // Arc lengths for squirrel animation (constant speed along path)
+    this.arcLengths = null;
+    this.totalArcLength = 0;
 
     // Display settings
     this.displayMode = 'vanilla'; // 'vanilla', 'rainbow', 'numbered', 'squirrel'
@@ -55,8 +60,8 @@ export class RotationChallenge {
     this.halfwayTargetOrientation = null;
 
     // Squirrel mode animation state
-    this.squirrelProgress = 0;
-    this.squirrelSpeed = 0.5; // cycles per second
+    this.squirrelProgress = 0; // 0 to 1, in terms of arc length
+    this.squirrelDuration = 6.0; // seconds to traverse whole path
 
     // Rendering
     this.scatterplot = new ScatterplotMatrix(canvas, dimensions);
@@ -96,6 +101,10 @@ export class RotationChallenge {
     // Generate a smooth random path on the sphere
     this.originalPath = generateSpherePath(this.dimensions, 100, 3);
 
+    // Compute arc lengths for constant-speed squirrel animation
+    this.arcLengths = computeArcLengths(this.originalPath);
+    this.totalArcLength = this.arcLengths[this.arcLengths.length - 1];
+
     // Sample a random rotation
     this.targetRotation = sampleRandomRotation(this.dimensions);
 
@@ -117,9 +126,9 @@ export class RotationChallenge {
    * Update game state
    */
   update(dt) {
-    // Update squirrel animation progress
+    // Update squirrel animation progress (arc-length based, constant speed)
     if (this.displayMode === 'squirrel') {
-      this.squirrelProgress += dt * this.squirrelSpeed;
+      this.squirrelProgress += dt / this.squirrelDuration;
       this.squirrelProgress = this.squirrelProgress % 1.0; // Keep in [0,1)
     }
 
@@ -221,9 +230,26 @@ export class RotationChallenge {
       ];
     } else if (this.displayMode === 'squirrel') {
       // Squirrel mode - show animated markers moving along paths
+      // Pass arc length data for constant-speed animation
       pathsToRender = [
-        { points: this.originalPath, color: 'rgba(255, 140, 0, 0.8)', label: 'original', fixed: true, squirrel: true, progress: this.squirrelProgress },
-        { points: this.targetPath, color: 'rgba(0, 255, 255, 0.8)', label: 'target', fixed: false, squirrel: true, progress: this.squirrelProgress }
+        { 
+          points: this.originalPath, 
+          color: 'rgba(255, 140, 0, 0.8)', 
+          label: 'original', 
+          fixed: true, 
+          squirrel: true, 
+          progress: this.squirrelProgress,
+          arcLengths: this.arcLengths 
+        },
+        { 
+          points: this.targetPath, 
+          color: 'rgba(0, 255, 255, 0.8)', 
+          label: 'target', 
+          fixed: false, 
+          squirrel: true, 
+          progress: this.squirrelProgress,
+          arcLengths: this.arcLengths 
+        }
       ];
     }
 
