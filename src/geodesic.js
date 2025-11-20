@@ -10,10 +10,12 @@ import numeric from 'numeric';
 
 //------------------------------------------------------------
 //  Helpers: conversion between mathjs <-> numeric.js complex
+//  (Reserved for future complex matrix support)
 //------------------------------------------------------------
 
 /**
  * Convert mathjs matrix to numeric.js complex matrix format
+ * Currently unused but kept for potential future support of complex unitary matrices
  */
 function mathToNumericComplexMatrix(M) {
   const rows = M.size()[0];
@@ -36,6 +38,7 @@ function mathToNumericComplexMatrix(M) {
 
 /**
  * Convert numeric.js complex matrix to mathjs matrix format
+ * Currently unused but kept for potential future support of complex unitary matrices
  */
 function numericToMathComplexMatrix(M) {
   const rows = M.length;
@@ -136,16 +139,14 @@ export function logUnitary(U) {
   }
   
   if (hasNaN) {
-    // Fallback: use mathjs's sqrtm and logm functions
-    // This is more robust but slower
-    try {
-      return math.sqrtm(math.multiply(U, math.ctranspose(U)));
-    } catch (e) {
-      // Final fallback: return zero matrix
-      return math.matrix(Array.from({ length: n }, () => 
-        Array.from({ length: n }, () => math.complex(0, 0))
-      ));
-    }
+    // Fallback: numeric.js eigendecomposition failed (singular eigenvector matrix)
+    // This shouldn't happen for proper rotation matrices, but if it does,
+    // we cannot compute the logarithm reliably with our current approach.
+    // Return zero matrix as a conservative fallback.
+    console.warn('Warning: eigendecomposition produced singular eigenvector matrix. Returning zero.');
+    return math.matrix(Array.from({ length: n }, () => 
+      Array.from({ length: n }, () => math.complex(0, 0))
+    ));
   }
 
   // Compute VL * V^{-1} (complex multiplication)
