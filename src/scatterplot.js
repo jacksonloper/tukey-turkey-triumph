@@ -223,7 +223,11 @@ export class ScatterplotMatrix {
         return {
           points: pathData.points.map(point => point.map((v, i) => v - player.position[i])),
           color: pathData.color,
-          label: pathData.label
+          label: pathData.label,
+          numbered: pathData.numbered,
+          numDots: pathData.numDots,
+          squirrel: pathData.squirrel,
+          progress: pathData.progress
         };
       } else {
         // Rotating paths: transform by player orientation
@@ -233,7 +237,11 @@ export class ScatterplotMatrix {
             return matVecMultN(orientationInverse, relativePos);
           }),
           color: pathData.color,
-          label: pathData.label
+          label: pathData.label,
+          numbered: pathData.numbered,
+          numDots: pathData.numDots,
+          squirrel: pathData.squirrel,
+          progress: pathData.progress
         };
       }
     }) : [];
