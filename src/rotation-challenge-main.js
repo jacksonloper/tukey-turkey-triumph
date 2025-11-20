@@ -11,12 +11,18 @@ function init() {
   const newChallengeButton = document.getElementById('new-challenge-button');
   const halfDistanceButton = document.getElementById('half-distance-button');
   const dimensionSelect = document.getElementById('dimension-select');
+  const displayModeSelect = document.getElementById('display-mode-select');
+  const gridToggle = document.getElementById('grid-toggle');
   const subtitle = document.getElementById('subtitle');
   const scrollHint = document.getElementById('scroll-hint');
 
   // Create challenge instance
   let currentDimensions = parseInt(dimensionSelect.value) || 4;
   let challenge = new RotationChallenge(canvas, currentDimensions);
+  
+  // Initialize with current UI state
+  challenge.setDisplayMode(displayModeSelect.value);
+  challenge.setGridEnabled(gridToggle.checked);
 
   // Update subtitle to reflect current dimension
   function updateSubtitle(dim) {
@@ -45,6 +51,10 @@ function init() {
       // Create a new challenge with the new dimensions
       currentDimensions = newDimensions;
       challenge = new RotationChallenge(canvas, currentDimensions);
+      
+      // Restore display mode and grid settings
+      challenge.setDisplayMode(displayModeSelect.value);
+      challenge.setGridEnabled(gridToggle.checked);
 
       // Update subtitle
       updateSubtitle(currentDimensions);
@@ -52,6 +62,16 @@ function init() {
       // Start the new challenge
       challenge.start();
     }
+  });
+
+  // Display mode selector wiring
+  displayModeSelect.addEventListener('change', () => {
+    challenge.setDisplayMode(displayModeSelect.value);
+  });
+
+  // Grid toggle wiring
+  gridToggle.addEventListener('change', () => {
+    challenge.setGridEnabled(gridToggle.checked);
   });
 
   // Hide scroll hint only when at least half of the canvas is visible

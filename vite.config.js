@@ -20,7 +20,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        rotation: resolve(__dirname, 'rotation-challenge.html'),
       },
     },
   },

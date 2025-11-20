@@ -15,7 +15,9 @@ import { ScatterplotMatrix } from './scatterplot.js';
 import {
   generateSpherePath,
   sampleRandomRotation,
-  rotatePath
+  rotatePath,
+  computeArcLengths,
+  resamplePathUniformly
 } from './sphere-path.js';
 
 export class RotationChallenge {
@@ -32,6 +34,14 @@ export class RotationChallenge {
     // The original path and rotated target path
     this.originalPath = null;
     this.targetPath = null;
+    
+    // Arc lengths for squirrel animation (constant speed along path)
+    this.arcLengths = null;
+    this.totalArcLength = 0;
+
+    // Display settings
+    this.displayMode = 'vanilla'; // 'vanilla', 'rainbow', 'numbered', 'squirrel'
+    this.gridEnabled = false;
 
     // Rotation state
     this.rotationSpeed = Math.PI / 2; // rad/sec
@@ -49,6 +59,10 @@ export class RotationChallenge {
     this.halfwayDuration = 0.5; // seconds
     this.halfwayStartOrientation = null;
     this.halfwayTargetOrientation = null;
+
+    // Squirrel mode animation state
+    this.squirrelProgress = 0; // 0 to 1, in terms of arc length
+    this.squirrelDuration = 6.0; // seconds to traverse whole path
 
     // Rendering
     this.scatterplot = new ScatterplotMatrix(canvas, dimensions);
@@ -86,7 +100,14 @@ export class RotationChallenge {
    */
   newChallenge() {
     // Generate a smooth random path on the sphere
-    this.originalPath = generateSpherePath(this.dimensions, 100, 3);
+    const rawPath = generateSpherePath(this.dimensions, 100, 3);
+    
+    // Resample to have evenly-spaced points (eliminates jittering)
+    this.originalPath = resamplePathUniformly(rawPath, 100);
+
+    // Compute arc lengths for constant-speed squirrel animation
+    this.arcLengths = computeArcLengths(this.originalPath);
+    this.totalArcLength = this.arcLengths[this.arcLengths.length - 1];
 
     // Sample a random rotation
     this.targetRotation = sampleRandomRotation(this.dimensions);
@@ -109,6 +130,12 @@ export class RotationChallenge {
    * Update game state
    */
   update(dt) {
+    // Update squirrel animation progress (arc-length based, constant speed)
+    if (this.displayMode === 'squirrel') {
+      this.squirrelProgress += dt / this.squirrelDuration;
+      this.squirrelProgress = this.squirrelProgress % 1.0; // Keep in [0,1)
+    }
+
     // Handle halfway animation (takes precedence over manual rotation)
     if (this.isAnimatingHalfway) {
       this.halfwayProgress += dt / this.halfwayDuration;
@@ -184,15 +211,57 @@ export class RotationChallenge {
       orientation: this.playerOrientation
     };
 
-    // Render both paths
-    // Original path (orange) stays fixed in world space
-    // Target path (cyan) rotates with player orientation
-    this.scatterplot.render(player, [], {
-      showPlayer: false, // Don't show the central dot
-      paths: [
+    // Prepare path rendering based on display mode
+    let pathsToRender = [];
+    
+    if (this.displayMode === 'vanilla') {
+      // Original solid color mode
+      pathsToRender = [
         { points: this.originalPath, color: 'rgba(255, 140, 0, 0.8)', label: 'original', fixed: true },
         { points: this.targetPath, color: 'rgba(0, 255, 255, 0.8)', label: 'target', fixed: false }
-      ]
+      ];
+    } else if (this.displayMode === 'rainbow') {
+      // Rainbow mode - both paths are rainbows with matched colors
+      pathsToRender = [
+        { points: this.originalPath, color: 'rainbow', label: 'original', fixed: true },
+        { points: this.targetPath, color: 'rainbow', label: 'target', fixed: false }
+      ];
+    } else if (this.displayMode === 'numbered') {
+      // Numbered mode - show 6 numbered dots along each path
+      pathsToRender = [
+        { points: this.originalPath, color: 'rgba(255, 140, 0, 0.8)', label: 'original', fixed: true, numbered: true, numDots: 6 },
+        { points: this.targetPath, color: 'rgba(0, 255, 255, 0.8)', label: 'target', fixed: false, numbered: true, numDots: 6 }
+      ];
+    } else if (this.displayMode === 'squirrel') {
+      // Squirrel mode - show animated markers moving along paths
+      // Pass arc length data for constant-speed animation
+      pathsToRender = [
+        { 
+          points: this.originalPath, 
+          color: 'rgba(255, 140, 0, 0.8)', 
+          label: 'original', 
+          fixed: true, 
+          squirrel: true, 
+          progress: this.squirrelProgress,
+          arcLengths: this.arcLengths 
+        },
+        { 
+          points: this.targetPath, 
+          color: 'rgba(0, 255, 255, 0.8)', 
+          label: 'target', 
+          fixed: false, 
+          squirrel: true, 
+          progress: this.squirrelProgress,
+          arcLengths: this.arcLengths 
+        }
+      ];
+    }
+
+    // Render both paths
+    this.scatterplot.render(player, [], {
+      showPlayer: false,
+      showGrid: this.gridEnabled,
+      paths: pathsToRender
     });
   }
 
@@ -238,6 +307,20 @@ export class RotationChallenge {
    */
   onWin() {
     console.log('🎉 Challenge completed!');
+  }
+
+  /**
+   * Set display mode
+   */
+  setDisplayMode(mode) {
+    this.displayMode = mode;
+  }
+
+  /**
+   * Set grid enabled state
+   */
+  setGridEnabled(enabled) {
+    this.gridEnabled = enabled;
   }
 
   /**

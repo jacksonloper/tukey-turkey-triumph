@@ -210,3 +210,78 @@ export function computeAlignment(path1, path2) {
   const score = Math.max(0, 1 - avgDist / 2);
   return score;
 }
+
+/**
+ * Compute cumulative arc length along a path
+ * Returns an array of cumulative distances from the start
+ * @param {Array} path - Array of n-dimensional points
+ * @returns {Array} Cumulative arc lengths [0, d1, d1+d2, ..., total_length]
+ */
+export function computeArcLengths(path) {
+  const arcLengths = [0];
+  let cumulative = 0;
+  
+  for (let i = 1; i < path.length; i++) {
+    const dist = Math.sqrt(
+      path[i].reduce((sum, val, j) => sum + (val - path[i-1][j]) ** 2, 0)
+    );
+    cumulative += dist;
+    arcLengths.push(cumulative);
+  }
+  
+  return arcLengths;
+}
+
+/**
+ * Resample a path to have evenly-spaced points based on arc length
+ * This eliminates jittering in animations by ensuring uniform segment lengths
+ * @param {Array} path - Array of n-dimensional points
+ * @param {number} numSamples - Number of points in resampled path
+ * @returns {Array} Resampled path with evenly-spaced points
+ */
+export function resamplePathUniformly(path, numSamples = 100) {
+  if (path.length < 2) return path;
+  
+  // Compute arc lengths
+  const arcLengths = computeArcLengths(path);
+  const totalLength = arcLengths[arcLengths.length - 1];
+  
+  if (totalLength === 0) return path;
+  
+  const resampledPath = [];
+  
+  // Sample at evenly-spaced arc length positions
+  for (let i = 0; i < numSamples; i++) {
+    const targetLength = (i / (numSamples - 1)) * totalLength;
+    
+    // Find the segment containing this arc length
+    let segmentIndex = 0;
+    for (let j = 0; j < arcLengths.length - 1; j++) {
+      if (arcLengths[j] <= targetLength && targetLength <= arcLengths[j + 1]) {
+        segmentIndex = j;
+        break;
+      }
+    }
+    
+    // Interpolate within the segment
+    const segmentStart = arcLengths[segmentIndex];
+    const segmentEnd = arcLengths[segmentIndex + 1];
+    const segmentLength = segmentEnd - segmentStart;
+    
+    let t;
+    if (segmentLength > 0) {
+      t = (targetLength - segmentStart) / segmentLength;
+    } else {
+      t = 0;
+    }
+    
+    // Lerp between the two points
+    const p0 = path[segmentIndex];
+    const p1 = path[segmentIndex + 1];
+    const interpolated = p0.map((val, dim) => val + t * (p1[dim] - val));
+    
+    resampledPath.push(interpolated);
+  }
+  
+  return resampledPath;
+}

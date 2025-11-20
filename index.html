@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Tukey's Turkey Triumph</title>
+    <title>Rotation Matching Challenge</title>
     <!-- MathJax for mathematical notation -->
     <script>
       MathJax = {
@@ -22,44 +22,40 @@
   <body>
     <div id="app">
       <header>
-        <h1>Tukey's Turkey Triumph</h1>
-        <p class="subtitle" id="subtitle">Navigate R⁴ • Rotate the Basis • Pardon Turkeys</p>
+        <h1>Rotation Matching Challenge</h1>
+        <p class="subtitle" id="subtitle">Align the Curves • Master SO(n) • Find the Hidden Rotation</p>
       </header>
       <div class="game-container">
         <div class="about">
           <p>
-            This game demonstrates what John W. Tukey called a "draughtsman's display": a matrix of pairwise scatterplots. You navigate $n$-dimensional Euclidean space $\mathbb{R}^n$ (with $n \in \{2,3,4,5\}$) while viewing all ${n \choose 2}$ orthogonal projections simultaneously in an $n \times n$ matrix.
+            <strong>The Challenge:</strong> Two smooth curves are displayed in $\mathbb{R}^n$ (on the sphere $S^{n-1}$ for $n \geq 3$, inside the ball for $n=2$).
+            The orange curve (fixed) is the original path. The cyan curve (rotating) is the same path rotated by a secret matrix $R \in \text{SO}(n)$
+            (a uniformly random rotation sampled from the Haar measure). Your goal is to rotate the cyan curve until it aligns perfectly with the orange curve.
           </p>
           <p>
-            <strong>Mathematical Structure:</strong> At each moment, your position is $\mathbf{p} \in \mathbb{R}^n$ and your orientation is an orthogonal matrix $R \in \text{SO}(n)$. Forward motion always proceeds in the direction of the first column of $R$, denoted $\mathbf{r}_1$. Cell $(i,j)$ displays the 2D projection $\pi_{ij}: \mathbb{R}^n \to \mathbb{R}^2$ defined by $\pi_{ij}(\mathbf{x}) = (x_j, x_i)$ where $\mathbf{x} = R^T(\mathbf{p}_{\text{world}} - \mathbf{p})$ transforms world coordinates into your oriented local frame. The cardinal grid remains world-aligned, so rotating your basis $R$ reveals how the $n$-dimensional structure projects into each 2D plane.
+            <strong>Mathematical Structure:</strong> This demonstrates what John W. Tukey called a "draughtsman's display": a matrix of pairwise scatterplots showing all ${n \choose 2}$ orthogonal projections simultaneously in an $n \times n$ matrix.
+            The original path $\gamma: [0,1] \to \mathbb{R}^n$ is a smooth curve. The target curve is $R\gamma(t)$ for some unknown $R \in \text{SO}(n)$. You control an orientation matrix $Q \in \text{SO}(n)$
+            by applying incremental rotations. The orange curve stays fixed while the cyan curve transforms as $Q^T R\gamma(t)$.
+            When $Q = R$, we have $Q^T R = I$, so the cyan curve matches the orange, and you win!
+          </p>
+          <p>
+            Cell $(i,j)$ displays the 2D projection $\pi_{ij}: \mathbb{R}^n \to \mathbb{R}^2$ defined by $\pi_{ij}(\mathbf{x}) = (x_j, x_i)$ where $\mathbf{x} = Q^T(\mathbf{p}_{\text{world}} - \mathbf{p})$ transforms world coordinates into your oriented local frame.
+            Rotating your basis $Q$ reveals how the $n$-dimensional structure projects into each 2D plane.
           </p>
           <p>
             The matrix‑of‑scatterplots idea was originated by J. A. Hartigan in
             <a href="https://scholar.google.com/scholar?q=Hartigan+Printer+Graphics+for+Clustering+1975" target="_blank" rel="noopener noreferrer">Printer Graphics for Clustering (1975)</a>,
             where he arranged pairwise dot plots to reveal structure for cluster analysis. Tukey popularized the display and the name "draughtsman's display"; it later became widely known as the scatterplot matrix (SPLOM).
           </p>
-          <p>
-            The "pardon" theme nods to the U.S. presidential tradition of sparing a Thanksgiving turkey — a ritual documented since the mid‑20th century and formally framed as a "pardon" in 1989 by President George H. W. Bush. See
-            <a href="https://en.wikipedia.org/wiki/National_Thanksgiving_Turkey_Presentation" target="_blank" rel="noopener noreferrer">National Thanksgiving Turkey Presentation</a>
-            and the <a href="https://www.whitehousehistory.org/press-room/press-backgrounder-pardoning-the-thanksgiving-turkey" target="_blank" rel="noopener noreferrer">White House Historical Association backgrounder</a> for historical context.
-          </p>
-          <p>
-            <strong>Try the Rotation Challenge:</strong> <a href="rotation-challenge.html">Rotation Matching Challenge</a> — Master SO(n) by aligning two curves through pure rotation.
-          </p>
         </div>
         <div class="controls-section">
-          <div class="section-title">Controls for play</div>
+          <div class="section-title">Challenge Controls</div>
           <div class="divider"></div>
-          <div class="goal-callout"><strong>Goal:</strong> Move your ship to the turkey to pardon it; a new turkey appears elsewhere.</div>
+          <div class="goal-callout"><strong>Goal:</strong> Minimize the distance to align the cyan curve with the orange curve</div>
           <div class="instructions instructions-top">
-          <p><strong>Move:</strong> Hold W (or click the big blue button) to move forward</p>
-            <p><strong>Rotate:</strong> Hold on any off‑diagonal cell (i, j) to rotate the current basis in the (i, j) plane</p>
-            <p><strong>Hop:</strong> Click a diagonal to jump along that dimension</p>
-          </div>
-          <div class="ship-toggle" role="group" aria-label="Ship selection">
-            <span class="label">Ship:</span>
-            <label><input type="radio" name="ship" value="aerilou" checked> Aerilou (arcade)</label>
-            <label><input type="radio" name="ship" value="druuge"> Druuge (momentum)</label>
+            <p><strong>Rotate:</strong> Hold on any off-diagonal cell (i, j) to rotate in that plane</p>
+            <p><strong>Auto-Rotate:</strong> Automatically rotate partway toward the solution</p>
+            <p><strong>New Puzzle:</strong> Click "New Challenge" for a fresh rotation</p>
           </div>
           <div class="dimension-selector">
             <label for="dimension-select">Dimensions:</label>
@@ -70,16 +66,26 @@
               <option value="5">5D</option>
             </select>
           </div>
-          <div class="trail-toggle">
+          <div class="display-mode-selector">
+            <label for="display-mode-select">Display Mode:</label>
+            <select id="display-mode-select">
+              <option value="vanilla" selected>Vanilla</option>
+              <option value="rainbow">Rainbow</option>
+              <option value="numbered">Numbered</option>
+              <option value="squirrel">Squirrel</option>
+            </select>
+          </div>
+          <div class="grid-toggle">
             <label>
-              <input type="checkbox" id="trail-toggle" checked>
-              Show trail (breadcrumbs)
+              <input type="checkbox" id="grid-toggle">
+              Show grid
             </label>
           </div>
         </div>
 
         <div class="controls">
-          <button id="go-button">Hold to Move Forward (or W)</button>
+          <button id="new-challenge-button">New Challenge</button>
+          <button id="half-distance-button">Auto-Rotate</button>
         </div>
 
         <div class="play-area">
@@ -87,16 +93,12 @@
 
           <div class="info-panel">
             <div class="stat">
-              <span class="label">Turkeys Pardoned:</span>
-              <span id="pardoned-count">0</span> / <span id="total-count">∞</span>
+              <span class="label">Distance:</span>
+              <span id="alignment-score">—</span>
             </div>
             <div class="stat">
-              <span class="label">Movement:</span>
-              <span id="movement-status">Idle</span>
-            </div>
-            <div class="stat">
-              <span class="label">Distance to Turkey:</span>
-              <span id="distance-display">—</span>
+              <span class="label">Best Distance:</span>
+              <span id="best-score">—</span>
             </div>
           </div>
         </div>
@@ -119,6 +121,6 @@
         </svg>
       </div>
     </div>
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/src/rotation-challenge-main.js"></script>
   </body>
 </html>

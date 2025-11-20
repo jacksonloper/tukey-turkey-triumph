@@ -1,31 +1,47 @@
-# Tukey's Turkey Triumph 🦃
+# Rotation Matching Challenge 🔄
 
-Navigate R⁴ using Tukey's scatterplot matrix (the draughtsman's display) and pardon turkeys. You move; the grid stays world‑aligned; the player stays centered.
+Master rotations in SO(n) by aligning curves through Tukey's scatterplot matrix (the draughtsman's display). See all pairwise projections simultaneously as you search for the hidden rotation.
 
 ## Overview
 
-- Hold W to move forward in your current 4D orientation
-- Hold on any off‑diagonal cell (i, j) to rotate the current basis in the (i, j) plane (swapping i/j reverses direction)
-- Reach the turkey to pardon it; a new one spawns elsewhere
+- Two curves are displayed: one fixed (orange) and one rotated by a secret rotation matrix (cyan)
+- Hold on any off-diagonal cell (i, j) to rotate your basis in that plane
+- Align the cyan curve with the orange curve by finding the correct rotation
+- Choose from 2D to 5D spaces and different visualization modes
+
+## Display Modes
+
+The challenge offers four visualization modes to help you see correspondences between curves:
+
+- **Vanilla**: Solid colors (orange and cyan) - the classic view
+- **Rainbow**: Gradient colors along arclength showing how points correspond
+- **Numbered**: Six numbered dots along each path to track specific points
+- **Squirrel**: Animated markers that move in sync along both curves
+
+The grid overlay is optional and off by default—toggle it to see the world-aligned coordinate system.
 
 ## Historical Context
 
-The scatterplot matrix—what John Tukey called the draughtsman's display—shows all pairwise projections of multivariate data in a tidy grid. The idea influenced a generation of exploratory graphics and clustering work, including J. A. Hartigan’s early computational graphics.
+The scatterplot matrix—what John Tukey called the draughtsman's display—shows all pairwise projections of multivariate data in a tidy grid. The idea influenced a generation of exploratory graphics and clustering work, including J. A. Hartigan's early computational graphics.
 
 Key references:
 - Tukey & Tukey (1981), exploratory graphics overviews
-- Hartigan (1975), “Printer Graphics for Clustering” — original paper link: https://scholar.google.com/scholar?q=Hartigan+Printer+Graphics+for+Clustering+1975
+- Hartigan (1975), "Printer Graphics for Clustering" — original paper link: https://scholar.google.com/scholar?q=Hartigan+Printer+Graphics+for+Clustering+1975
 - Chambers et al. (1983), Graphical Methods for Data Analysis
 
-## Game Mechanics
+## Challenge Mechanics
 
-### The 4D Universe
-- You exist in 4D Euclidean space (R⁴)
-- The grid is fixed to the world (cardinal axes); your dot stays centered and moves relative to it
-- Exactly one turkey is active at a time; on contact it’s pardoned and another appears
+### The Goal
+- A smooth curve is generated on the sphere S^(n-1) (or inside the ball for 2D)
+- The curve is randomly rotated by a matrix R sampled from SO(n) using the Haar measure
+- You control a rotation matrix Q by applying incremental plane rotations
+- When Q = R, the curves align perfectly and you win!
+
+### Mathematical Structure
+At each moment, you control an orientation matrix Q ∈ SO(n). The cyan curve transforms as Q^T R γ(t), where γ(t) is the original path and R is the secret target rotation. When your rotation Q matches R, the product Q^T R becomes the identity matrix I, and the curves align.
 
 ### Visualization
-The game displays a **4×4 scatterplot matrix** showing all pairwise projections:
+The display shows an **n×n scatterplot matrix** with all pairwise projections:
 ```
         Dim 1   Dim 2   Dim 3   Dim 4
 Dim 1    —      1-2     1-3     1-4
@@ -35,27 +51,27 @@ Dim 4   4-1     4-2     4-3      —
 ```
 
 Each cell shows:
-- Your position (blue dot)
-- Turkeys (turkey icons)
-- Pardoned turkeys (gold medal icons)
+- The orange curve (fixed reference)
+- The cyan curve (rotates with your orientation)
+- Optional grid overlay showing world coordinates
 
 ### Controls
-
-**Movement:**
-- W (or button): move forward; no reverse
 
 **Rotation:**
 - Hold on a plot (i, j): rotate the current basis in the (i, j) plane
 - (i, j) vs (j, i) rotate in opposite directions
 
-### Objective
-Get within pardon range to award a medal. Keep going; new turkeys keep spawning.
+**Auto-Rotate:**
+- Click "Auto-Rotate" to move halfway toward the solution
+
+**New Challenge:**
+- Click "New Challenge" to generate a fresh random rotation
 
 ## Technical Stack
 
 - **Vanilla JavaScript**: No frameworks, pure performance
 - **HTML5 Canvas**: For rendering the scatterplot matrix
-- **Build System**: Vite (via npx) for development and production builds
+- **Build System**: Vite for development and production builds
 - **Static Deployment**: Can be hosted anywhere (GitHub Pages, Netlify, Vercel, etc.)
 
 ## Project Structure
@@ -63,13 +79,13 @@ Get within pardon range to award a medal. Keep going; new turkeys keep spawning.
 ```
 tukeys-turkey-triumph/
 ├── src/
-│   ├── main.js           # Entry point
-│   ├── game.js           # Game state and logic
-│   ├── math4d.js         # 4D mathematics (torus, rotation)
-│   ├── scatterplot.js    # Scatterplot matrix rendering
-│   ├── turkey.js         # Turkey AI (Ornstein-Uhlenbeck)
-│   └── style.css         # Styling
-├── index.html            # Main HTML
+│   ├── rotation-challenge-main.js  # Entry point
+│   ├── rotation-challenge.js       # Challenge logic
+│   ├── math4d.js                   # N-D mathematics (rotations, SO(n))
+│   ├── scatterplot.js              # Scatterplot matrix rendering
+│   ├── sphere-path.js              # Path generation and rotation
+│   └── style.css                   # Styling
+├── index.html                      # Main HTML
 ├── package.json
 └── README.md
 ```
@@ -87,12 +103,14 @@ npm run preview
 ```
 
 ## Mathematical Notes
-- 4D rotations operate in one of six planes (i, j). We apply rotations in the current local basis; swapping (i, j) flips direction.
+- N-dimensional rotations operate in planes (i, j). We apply rotations in the current local basis; swapping (i, j) flips direction.
+- The rotation distance metric uses the Frobenius norm: ||R^T Q - I||_F
+- Random rotations are sampled using QR decomposition of Gaussian matrices (Haar measure)
 
 ## Credits
-- Inspired by John W. Tukey’s exploratory data analysis
-- J. A. Hartigan’s early cluster graphics (“Printer Graphics for Clustering,” 1975)
-- Thanksgiving meets multidimensional geometry
+- Inspired by John W. Tukey's exploratory data analysis
+- J. A. Hartigan's early cluster graphics ("Printer Graphics for Clustering," 1975)
+- Special Operations group SO(n) and the geometry of rotations
 
 ## License
 
