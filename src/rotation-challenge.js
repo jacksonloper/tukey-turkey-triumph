@@ -16,7 +16,8 @@ import {
   generateSpherePath,
   sampleRandomRotation,
   rotatePath,
-  computeArcLengths
+  computeArcLengths,
+  resamplePathUniformly
 } from './sphere-path.js';
 
 export class RotationChallenge {
@@ -99,7 +100,10 @@ export class RotationChallenge {
    */
   newChallenge() {
     // Generate a smooth random path on the sphere
-    this.originalPath = generateSpherePath(this.dimensions, 100, 3);
+    const rawPath = generateSpherePath(this.dimensions, 100, 3);
+    
+    // Resample to have evenly-spaced points (eliminates jittering)
+    this.originalPath = resamplePathUniformly(rawPath, 100);
 
     // Compute arc lengths for constant-speed squirrel animation
     this.arcLengths = computeArcLengths(this.originalPath);
