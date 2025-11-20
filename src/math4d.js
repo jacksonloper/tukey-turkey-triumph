@@ -452,3 +452,22 @@ export function interpRotationSO(A, B, t) {
   return ortho;
 }
 
+/**
+ * Re-export geodesic distance functions from geodesic.js module
+ * These provide true geodesic distances on SO(n) using matrix logarithm
+ * 
+ * Usage:
+ *   import { geodesicDistanceArray, dGeodesicAtZeroArray } from './math4d.js';
+ *   
+ *   const dist = geodesicDistanceArray(R1, R2);
+ *   const deriv = dGeodesicAtZeroArray(R, T, K);
+ */
+export { 
+  geodesicDistanceArray,
+  dGeodesicAtZeroArray,
+  logUnitary,
+  arrayToMathMatrix,
+  mathMatrixToArray
+} from './geodesic.js';
+
+
