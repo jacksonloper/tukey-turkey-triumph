@@ -16,6 +16,7 @@ export class ScatterplotMatrix {
 
     // Mobile view settings
     this.mobileViewEnabled = false;
+    this.mobileOverlayEnabled = false;
     
     // Rotation direction for mobile controls (1 = clockwise, -1 = counterclockwise)
     this.rotationDirection = 1;
@@ -75,6 +76,11 @@ export class ScatterplotMatrix {
       }
       this.resize();
     }
+  }
+
+  setMobileOverlayEnabled(enabled) {
+    this.mobileOverlayEnabled = enabled;
+    // No need to recreate grid, just re-render with new setting
   }
 
   /**
@@ -549,7 +555,13 @@ export class ScatterplotMatrix {
       if (mode === 'target') {
         return pathData.fixed; // Show only fixed (orange) paths
       } else {
-        return !pathData.fixed; // Show only rotating (cyan) paths
+        // In 'current' mode, show rotating paths always
+        // If overlay is enabled, also show fixed paths
+        if (this.mobileOverlayEnabled) {
+          return true; // Show both fixed and rotating paths
+        } else {
+          return !pathData.fixed; // Show only rotating (cyan) paths
+        }
       }
     });
 
