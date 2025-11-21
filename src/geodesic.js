@@ -114,6 +114,42 @@ export function dGeodesicAtZero(R, T, K, h = 1e-6) {
 }
 
 //------------------------------------------------------------
+// Geodesic interpolation on SO(n)
+//------------------------------------------------------------
+
+/**
+ * Geodesic interpolation between two rotation matrices on SO(n)
+ * Uses matrix logarithm and exponential for proper geodesic path
+ * 
+ * The geodesic path from A to B at parameter t is:
+ * result = A * expm(t * logm(A^T * B))
+ * 
+ * @param {Object} A - mathjs matrix (start rotation)
+ * @param {Object} B - mathjs matrix (end rotation)
+ * @param {number} t - interpolation parameter (0 = A, 1 = B)
+ * @returns {Object} mathjs matrix (interpolated rotation)
+ */
+export function geodesicInterp(A, B, t) {
+  // Compute relative rotation: R_rel = A^T * B
+  const AT = math.ctranspose(A);
+  const R_rel = math.multiply(AT, B);
+  
+  // Take matrix logarithm of relative rotation
+  const log_R = math.logm(R_rel);
+  
+  // Scale by interpolation parameter t
+  const scaled_log = math.multiply(log_R, t);
+  
+  // Exponentiate to get intermediate relative rotation
+  const R_interp = math.expm(scaled_log);
+  
+  // Apply to starting rotation
+  const result = math.multiply(A, R_interp);
+  
+  return result;
+}
+
+//------------------------------------------------------------
 // Conversion helpers for working with native arrays
 //------------------------------------------------------------
 
@@ -168,4 +204,19 @@ export function dGeodesicAtZeroArray(R, T, K, h = 1e-6) {
   const T_math = arrayToMathMatrix(T);
   const K_math = arrayToMathMatrix(K);
   return dGeodesicAtZero(R_math, T_math, K_math, h);
+}
+
+/**
+ * Geodesic interpolation between two rotations (native array version)
+ * 
+ * @param {Array} A - 2D array representing start rotation matrix
+ * @param {Array} B - 2D array representing end rotation matrix
+ * @param {number} t - interpolation parameter (0 = A, 1 = B)
+ * @returns {Array} 2D array representing interpolated rotation
+ */
+export function geodesicInterpArray(A, B, t) {
+  const A_math = arrayToMathMatrix(A);
+  const B_math = arrayToMathMatrix(B);
+  const result_math = geodesicInterp(A_math, B_math, t);
+  return mathMatrixToArray(result_math);
 }

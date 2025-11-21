@@ -8,6 +8,8 @@ import {
   geodesicDistanceArray,
   dGeodesicAtZero,
   dGeodesicAtZeroArray,
+  geodesicInterp,
+  geodesicInterpArray,
   arrayToMathMatrix,
   logUnitary,
   frobeniusNorm
@@ -226,6 +228,98 @@ describe('Geodesic Distance Functions', () => {
       const deriv2 = dGeodesicAtZero(R1_math, R2_math, K_math);
       
       expect(Math.abs(deriv1 - deriv2)).toBeLessThan(1e-8);
+    });
+  });
+
+  describe('Geodesic Interpolation', () => {
+    it('should interpolate at t=0 to start rotation', () => {
+      const R1 = arrayToMathMatrix(identityNxN(3));
+      const R2 = arrayToMathMatrix(rotationND(3, 0, 1, Math.PI / 4));
+      
+      const result = geodesicInterp(R1, R2, 0);
+      const result_arr = result.toArray();
+      const R1_arr = identityNxN(3);
+      
+      // Should be very close to R1
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          expect(Math.abs(result_arr[i][j] - R1_arr[i][j])).toBeLessThan(1e-10);
+        }
+      }
+    });
+
+    it('should interpolate at t=1 to end rotation', () => {
+      const R1 = arrayToMathMatrix(identityNxN(3));
+      const R2 = arrayToMathMatrix(rotationND(3, 0, 1, Math.PI / 4));
+      
+      const result = geodesicInterp(R1, R2, 1);
+      const result_arr = result.toArray();
+      const R2_arr = rotationND(3, 0, 1, Math.PI / 4);
+      
+      // Should be very close to R2
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          expect(Math.abs(result_arr[i][j] - R2_arr[i][j])).toBeLessThan(1e-10);
+        }
+      }
+    });
+
+    it('should give halfway point at t=0.5 along geodesic', () => {
+      const R1 = arrayToMathMatrix(identityNxN(3));
+      const R2 = arrayToMathMatrix(rotationND(3, 0, 1, Math.PI / 4));
+      
+      const halfway = geodesicInterp(R1, R2, 0.5);
+      
+      // Distance from R1 to halfway should equal distance from halfway to R2
+      const dist1 = geodesicDistance(R1, halfway);
+      const dist2 = geodesicDistance(halfway, R2);
+      
+      // They should be approximately equal
+      expect(Math.abs(dist1 - dist2)).toBeLessThan(1e-8);
+    });
+
+    it('should produce valid rotation matrices', () => {
+      const R1 = arrayToMathMatrix(sampleRandomRotation(3));
+      const R2 = arrayToMathMatrix(sampleRandomRotation(3));
+      
+      for (let t of [0.25, 0.5, 0.75]) {
+        const result = geodesicInterp(R1, R2, t);
+        const result_arr = result.toArray();
+        
+        // Check orthogonality: R^T * R = I
+        let RTR = [];
+        for (let i = 0; i < 3; i++) {
+          RTR[i] = [];
+          for (let j = 0; j < 3; j++) {
+            RTR[i][j] = 0;
+            for (let k = 0; k < 3; k++) {
+              RTR[i][j] += result_arr[k][i] * result_arr[k][j];
+            }
+          }
+        }
+        
+        // Should be close to identity
+        for (let i = 0; i < 3; i++) {
+          for (let j = 0; j < 3; j++) {
+            const expected = i === j ? 1 : 0;
+            expect(Math.abs(RTR[i][j] - expected)).toBeLessThan(1e-8);
+          }
+        }
+      }
+    });
+  });
+
+  describe('geodesicInterpArray', () => {
+    it('should work with native arrays', () => {
+      const R1 = identityNxN(3);
+      const R2 = rotationND(3, 0, 1, Math.PI / 4);
+      
+      const halfway = geodesicInterpArray(R1, R2, 0.5);
+      
+      // Should be a valid array
+      expect(Array.isArray(halfway)).toBe(true);
+      expect(halfway.length).toBe(3);
+      expect(Array.isArray(halfway[0])).toBe(true);
     });
   });
 

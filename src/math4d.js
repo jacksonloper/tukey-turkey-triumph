@@ -457,14 +457,16 @@ export function interpRotationSO(A, B, t) {
  * These provide true geodesic distances on SO(n) using matrix logarithm
  * 
  * Usage:
- *   import { geodesicDistanceArray, dGeodesicAtZeroArray } from './math4d.js';
+ *   import { geodesicDistanceArray, dGeodesicAtZeroArray, geodesicInterpArray } from './math4d.js';
  *   
  *   const dist = geodesicDistanceArray(R1, R2);
  *   const deriv = dGeodesicAtZeroArray(R, T, K);
+ *   const halfway = geodesicInterpArray(R1, R2, 0.5);
  */
 export { 
   geodesicDistanceArray,
   dGeodesicAtZeroArray,
+  geodesicInterpArray,
   logUnitary,
   arrayToMathMatrix,
   mathMatrixToArray

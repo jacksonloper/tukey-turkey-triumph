@@ -9,7 +9,8 @@ import {
   matMultN,
   transposeN,
   rotationDistanceSO,
-  interpRotationSO
+  interpRotationSO,
+  geodesicInterpArray
 } from './math4d.js';
 import { ScatterplotMatrix } from './scatterplot.js';
 import {
@@ -284,12 +285,14 @@ export class RotationChallenge {
 
   /**
    * Auto-rotate partway toward the target rotation
+   * Uses geodesic interpolation via matrix logarithm and exponential
    */
   halfTheDistance() {
     if (this.isAnimatingHalfway) return; // Already animating
 
-    // Interpolate halfway toward target using linear interp + Gram-Schmidt
-    const targetOrientation = interpRotationSO(
+    // Interpolate halfway toward target using geodesic interpolation
+    // This uses logm and expm for proper geodesic path on SO(n)
+    const targetOrientation = geodesicInterpArray(
       this.playerOrientation,
       this.targetRotation,
       0.5

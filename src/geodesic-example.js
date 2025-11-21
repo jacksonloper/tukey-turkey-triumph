@@ -4,11 +4,13 @@
  * This demonstrates how to compute:
  * 1. Geodesic distance between rotation matrices
  * 2. Derivatives of geodesic distance with respect to swivel parameters
+ * 3. Geodesic interpolation between rotations
  */
 
 import {
   geodesicDistanceArray,
   dGeodesicAtZeroArray,
+  geodesicInterpArray,
   identityNxN,
   rotationND
 } from './math4d.js';
@@ -73,6 +75,24 @@ const R_same = rotationND(4, 0, 2, 0.7);
 const dist_zero = geodesicDistanceArray(R_same, R_same);
 console.log('  Geodesic distance:', dist_zero.toFixed(10));
 console.log('  (Should be very close to 0)');
+console.log();
+
+// Example 6: Geodesic interpolation
+console.log('Example 6: Geodesic interpolation');
+const R_start = identityNxN(3);
+const R_end = rotationND(3, 0, 1, Math.PI / 2);
+
+// Interpolate at various points
+const R_quarter = geodesicInterpArray(R_start, R_end, 0.25);
+const R_half = geodesicInterpArray(R_start, R_end, 0.5);
+const R_threequarter = geodesicInterpArray(R_start, R_end, 0.75);
+
+console.log('  Start to end: 90° rotation in plane (0,1)');
+console.log('  Distance at t=0.25:', geodesicDistanceArray(R_start, R_quarter).toFixed(4));
+console.log('  Distance at t=0.50:', geodesicDistanceArray(R_start, R_half).toFixed(4));
+console.log('  Distance at t=0.75:', geodesicDistanceArray(R_start, R_threequarter).toFixed(4));
+console.log('  Total distance:    ', geodesicDistanceArray(R_start, R_end).toFixed(4));
+console.log('  (Intermediate distances should be proportional to t)');
 console.log();
 
 console.log('=== Examples Complete ===');
