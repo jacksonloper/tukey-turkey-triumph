@@ -10,7 +10,8 @@ import {
   transposeN,
   rotationDistanceSO,
   interpRotationSO,
-  geodesicInterpArray
+  geodesicInterpArray,
+  geodesicDistanceArray
 } from './math4d.js';
 import { ScatterplotMatrix } from './scatterplot.js';
 import {
@@ -190,11 +191,12 @@ export class RotationChallenge {
 
   /**
    * Compute rotation distance between player orientation and target rotation
+   * Uses geodesic distance: ||log(R^T Q)||_F
    */
   updateDistance() {
-    // Compute distance: ||R^T Q - I||_F
+    // Compute geodesic distance: ||log(R^T Q)||_F
     // where R = targetRotation, Q = playerOrientation
-    this.currentDistance = rotationDistanceSO(this.targetRotation, this.playerOrientation);
+    this.currentDistance = geodesicDistanceArray(this.targetRotation, this.playerOrientation);
 
     // Update best score (minimum distance)
     if (this.currentDistance < this.bestDistance) {
