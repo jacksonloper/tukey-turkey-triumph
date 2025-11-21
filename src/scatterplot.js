@@ -111,17 +111,23 @@ export class ScatterplotMatrix {
       labelDiv.textContent = `(${row + 1}, ${col + 1})`;
       rowDiv.appendChild(labelDiv);
       
-      // Create single canvas (showing overlaid target and current)
-      const cell = this.createMobileCell(row, col, index);
-      rowDiv.appendChild(cell.container);
+      // Create target cell (left - shows orange fixed curve)
+      const targetCell = this.createMobileCell(row, col, index, 'target');
+      rowDiv.appendChild(targetCell.container);
+      
+      // Create current cell (right - shows cyan rotating curve)
+      const currentCell = this.createMobileCell(row, col, index, 'current');
+      rowDiv.appendChild(currentCell.container);
       
       container.appendChild(rowDiv);
       
-      // Store canvas reference
+      // Store canvas references
       this.mobileCanvases.push({
         dims: [row, col],
-        canvas: cell.canvas,
-        ctx: cell.ctx
+        targetCanvas: targetCell.canvas,
+        targetCtx: targetCell.ctx,
+        currentCanvas: currentCell.canvas,
+        currentCtx: currentCell.ctx
       });
     });
   }
@@ -129,7 +135,7 @@ export class ScatterplotMatrix {
   /**
    * Create a mobile cell with its own canvas
    */
-  createMobileCell(row, col, index) {
+  createMobileCell(row, col, index, mode) {
     const cellDiv = document.createElement('div');
     cellDiv.className = 'mobile-grid-cell';
     
@@ -137,7 +143,11 @@ export class ScatterplotMatrix {
     cellDiv.style.aspectRatio = '1';
     cellDiv.style.minHeight = '150px';
     
-    // No label needed since both curves are on one canvas
+    // Create label
+    const labelDiv = document.createElement('div');
+    labelDiv.className = `mobile-grid-cell-label ${mode}`;
+    labelDiv.textContent = mode === 'target' ? 'Target' : 'Current';
+    cellDiv.appendChild(labelDiv);
     
     // Create canvas
     const canvas = document.createElement('canvas');
@@ -154,23 +164,25 @@ export class ScatterplotMatrix {
     // Scale context for DPR
     ctx.scale(dpr, dpr);
     
-    // Add click/touch handling for rotation
-    canvas.addEventListener('pointerdown', (e) => {
-      if (e.cancelable) e.preventDefault();
-      this.isMouseDown = true;
-      this.holdDims = [row, col];
-      this.clickCallbacks.forEach(cb => cb(row, col));
-    }, { passive: false });
-    
-    canvas.addEventListener('pointerup', () => {
-      this.isMouseDown = false;
-      this.holdDims = null;
-    });
-    
-    canvas.addEventListener('pointerleave', () => {
-      this.isMouseDown = false;
-      this.holdDims = null;
-    });
+    // Add click/touch handling only for current cells (for rotation)
+    if (mode === 'current') {
+      canvas.addEventListener('pointerdown', (e) => {
+        if (e.cancelable) e.preventDefault();
+        this.isMouseDown = true;
+        this.holdDims = [row, col];
+        this.clickCallbacks.forEach(cb => cb(row, col));
+      }, { passive: false });
+      
+      canvas.addEventListener('pointerup', () => {
+        this.isMouseDown = false;
+        this.holdDims = null;
+      });
+      
+      canvas.addEventListener('pointerleave', () => {
+        this.isMouseDown = false;
+        this.holdDims = null;
+      });
+    }
     
     cellDiv.appendChild(canvas);
     
@@ -424,31 +436,41 @@ export class ScatterplotMatrix {
   }
 
   /**
-   * Render mobile view: each (i,j) pair with single canvas showing both curves
+   * Render mobile view: each (i,j) pair with separate target and current canvases
    */
   renderMobileView(playerLocal, turkeysLocal, ui, trailLocal, pathsLocal) {
     if (!this.mobileCanvases || this.mobileCanvases.length === 0) {
       return;
     }
 
-    // Render each canvas with both target and current curves overlaid
+    // Render each pair of canvases
     this.mobileCanvases.forEach(canvasInfo => {
       const [dimI, dimJ] = canvasInfo.dims;
       
-      // Render both curves on the same canvas (like normal grid mode)
+      // Render target canvas (fixed paths - orange)
       this.renderSingleMobileCanvas(
-        canvasInfo.canvas,
-        canvasInfo.ctx,
+        canvasInfo.targetCanvas,
+        canvasInfo.targetCtx,
         dimI, dimJ,
-        playerLocal, turkeysLocal, ui, trailLocal, pathsLocal
+        playerLocal, turkeysLocal, ui, trailLocal, pathsLocal,
+        'target'
+      );
+      
+      // Render current canvas (rotating paths - cyan)
+      this.renderSingleMobileCanvas(
+        canvasInfo.currentCanvas,
+        canvasInfo.currentCtx,
+        dimI, dimJ,
+        playerLocal, turkeysLocal, ui, trailLocal, pathsLocal,
+        'current'
       );
     });
   }
 
   /**
-   * Render a single mobile canvas with both target and current curves
+   * Render a single mobile canvas (either target or current)
    */
-  renderSingleMobileCanvas(canvas, ctx, dimI, dimJ, playerLocal, turkeysLocal, ui, trailLocal, pathsLocal) {
+  renderSingleMobileCanvas(canvas, ctx, dimI, dimJ, playerLocal, turkeysLocal, ui, trailLocal, pathsLocal, mode) {
     // Get canvas dimensions
     const width = 200; // Base display size
     const height = 200;
@@ -470,8 +492,17 @@ export class ScatterplotMatrix {
       this.drawWorldGridSeparate(ctx, padding, padding, innerWidth, innerHeight, dimI, dimJ);
     }
 
-    // Draw all paths (both target and current, overlaid like normal grid mode)
-    pathsLocal.forEach(pathData => {
+    // Filter paths based on mode
+    const filteredPaths = pathsLocal.filter(pathData => {
+      if (mode === 'target') {
+        return pathData.fixed; // Show only fixed (orange) paths
+      } else {
+        return !pathData.fixed; // Show only rotating (cyan) paths
+      }
+    });
+
+    // Draw paths
+    filteredPaths.forEach(pathData => {
       this.drawPathSeparate(ctx, padding, padding, innerWidth, innerHeight, pathData, dimI, dimJ);
     });
 
