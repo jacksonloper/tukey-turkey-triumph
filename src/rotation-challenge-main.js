@@ -14,6 +14,7 @@ function init() {
   const displayModeSelect = document.getElementById('display-mode-select');
   const gridToggle = document.getElementById('grid-toggle');
   const mobileViewToggle = document.getElementById('mobile-view-toggle');
+  const mobileOverlayToggle = document.getElementById('mobile-overlay-toggle');
   const subtitle = document.getElementById('subtitle');
   const scrollHint = document.getElementById('scroll-hint');
 
@@ -25,6 +26,7 @@ function init() {
   challenge.setDisplayMode(displayModeSelect.value);
   challenge.setGridEnabled(gridToggle.checked);
   challenge.setMobileViewEnabled(mobileViewToggle.checked);
+  challenge.setMobileOverlayEnabled(mobileOverlayToggle.checked);
 
   // Update subtitle to reflect current dimension
   function updateSubtitle(dim) {
@@ -58,6 +60,7 @@ function init() {
       challenge.setDisplayMode(displayModeSelect.value);
       challenge.setGridEnabled(gridToggle.checked);
       challenge.setMobileViewEnabled(mobileViewToggle.checked);
+      challenge.setMobileOverlayEnabled(mobileOverlayToggle.checked);
 
       // Update subtitle
       updateSubtitle(currentDimensions);
@@ -80,6 +83,11 @@ function init() {
   // Mobile view toggle wiring
   mobileViewToggle.addEventListener('change', () => {
     challenge.setMobileViewEnabled(mobileViewToggle.checked);
+  });
+
+  // Mobile overlay toggle wiring
+  mobileOverlayToggle.addEventListener('change', () => {
+    challenge.setMobileOverlayEnabled(mobileOverlayToggle.checked);
   });
 
   // Hide scroll hint only when at least half of the canvas is visible

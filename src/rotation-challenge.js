@@ -45,6 +45,7 @@ export class RotationChallenge {
     this.displayMode = 'vanilla'; // 'vanilla', 'rainbow', 'numbered', 'squirrel'
     this.gridEnabled = false;
     this.mobileViewEnabled = false;
+    this.mobileOverlayEnabled = false;
 
     // Rotation state
     this.rotationSpeed = Math.PI / 2; // rad/sec
@@ -338,6 +339,15 @@ export class RotationChallenge {
     this.mobileViewEnabled = enabled;
     // Pass the setting to the scatterplot renderer
     this.scatterplot.setMobileViewEnabled(enabled);
+  }
+
+  /**
+   * Set mobile overlay enabled state
+   */
+  setMobileOverlayEnabled(enabled) {
+    this.mobileOverlayEnabled = enabled;
+    // Pass the setting to the scatterplot renderer
+    this.scatterplot.setMobileOverlayEnabled(enabled);
   }
 
   /**
