@@ -417,8 +417,9 @@ button:active {
   display: block;
   width: 100%;
   height: 100%;
-  cursor: crosshair;
-  touch-action: none;
+  cursor: default;
+  touch-action: auto;
+  pointer-events: none;
 }
 
 .mobile-grid-cell-label {

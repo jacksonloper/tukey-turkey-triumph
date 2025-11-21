@@ -335,6 +335,12 @@ export class ScatterplotMatrix {
   }
 
   handlePointerDown(e) {
+    // In mobile view, canvases don't handle pointer events
+    // (only buttons do), so allow scrolling
+    if (this.mobileViewEnabled) {
+      return;
+    }
+    
     // Prevent scrolling/zoom while interacting
     if (e.cancelable) e.preventDefault();
     try { this.canvas.setPointerCapture(e.pointerId); } catch {}
@@ -356,6 +362,11 @@ export class ScatterplotMatrix {
   }
 
   handlePointerUp(e) {
+    // In mobile view, canvases don't handle pointer events
+    if (this.mobileViewEnabled) {
+      return;
+    }
+    
     this.isMouseDown = false;
     this.holdDims = null;
     try { this.canvas.releasePointerCapture(e.pointerId); } catch {}
