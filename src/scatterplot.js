@@ -143,12 +143,6 @@ export class ScatterplotMatrix {
     const cellDiv = document.createElement('div');
     cellDiv.className = 'mobile-grid-cell';
     
-    // Create label
-    const labelDiv = document.createElement('div');
-    labelDiv.className = `mobile-grid-cell-label ${mode}`;
-    labelDiv.textContent = mode === 'target' ? 'Target' : 'Current';
-    cellDiv.appendChild(labelDiv);
-    
     // Create canvas container
     const canvasContainer = document.createElement('div');
     canvasContainer.className = 'mobile-canvas-container';
