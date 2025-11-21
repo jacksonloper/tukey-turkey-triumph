@@ -107,6 +107,37 @@ npm run preview
 - The rotation distance metric uses the Frobenius norm: ||R^T Q - I||_F
 - Random rotations are sampled using QR decomposition of Gaussian matrices (Haar measure)
 
+### Geodesic Distance on SO(n)
+
+The repository now includes proper geodesic distance calculations using matrix logarithm:
+
+```javascript
+import { geodesicDistanceArray, dGeodesicAtZeroArray } from './src/math4d.js';
+
+// Compute geodesic distance between two rotation matrices
+const distance = geodesicDistanceArray(R1, R2);
+
+// Compute derivative of distance with respect to a swivel parameter
+// K is a skew-symmetric generator matrix
+const derivative = dGeodesicAtZeroArray(R, T, K);
+```
+
+The geodesic distance is computed as:
+```
+d(R, T) = || log(R^* T) ||_F
+```
+
+where `log` is the matrix logarithm for unitary/orthogonal matrices, computed using the inverse scaling and squaring method with Taylor series expansion.
+
+The derivative function computes:
+```
+d/dε [d(H(ε), T)]_{ε=0}  where  H(ε) = R exp(ε K)
+```
+
+This uses central finite differences for numerical differentiation. See `src/geodesic-example.js` for usage examples.
+
+**Dependencies:** The geodesic functions use a fork of `mathjs` with `logm` (matrix logarithm) support, included as a local dependency.
+
 ## Credits
 - Inspired by John W. Tukey's exploratory data analysis
 - J. A. Hartigan's early cluster graphics ("Printer Graphics for Clustering," 1975)

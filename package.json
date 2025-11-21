@@ -12,5 +12,8 @@
   "devDependencies": {
     "vite": "^7.1.7",
     "vitest": "^2.0.0"
+  },
+  "dependencies": {
+    "mathjs": "file:.dependencies/mathjs-15.1.0.tgz"
   }
 }
