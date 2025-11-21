@@ -112,7 +112,7 @@ export class ScatterplotMatrix {
       rowDiv.appendChild(labelDiv);
       
       // Create single canvas (showing overlaid target and current)
-      const cell = this.createMobileCell('combined', row, col, index, 'combined');
+      const cell = this.createMobileCell(row, col, index);
       rowDiv.appendChild(cell.container);
       
       container.appendChild(rowDiv);
@@ -129,7 +129,7 @@ export class ScatterplotMatrix {
   /**
    * Create a mobile cell with its own canvas
    */
-  createMobileCell(type, row, col, index, mode) {
+  createMobileCell(row, col, index) {
     const cellDiv = document.createElement('div');
     cellDiv.className = 'mobile-grid-cell';
     
