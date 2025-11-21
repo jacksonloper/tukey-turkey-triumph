@@ -108,14 +108,15 @@ export class ScatterplotMatrix {
       const rowDiv = document.createElement('div');
       rowDiv.className = 'mobile-grid-row';
       
-      // Create label (rotated 90 degrees)
+      // Create target cell (left - shows orange fixed curve)
+      const targetCell = this.createMobileCell(row, col, 'target');
+      
+      // Add label to target cell (positioned above canvas)
       const labelDiv = document.createElement('div');
       labelDiv.className = 'mobile-grid-label';
       labelDiv.textContent = `(${row + 1}, ${col + 1})`;
-      rowDiv.appendChild(labelDiv);
+      targetCell.container.appendChild(labelDiv);
       
-      // Create target cell (left - shows orange fixed curve)
-      const targetCell = this.createMobileCell(row, col, 'target');
       rowDiv.appendChild(targetCell.container);
       
       // Create current cell (right - shows cyan rotating curve)

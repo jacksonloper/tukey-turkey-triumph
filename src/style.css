@@ -378,24 +378,30 @@ button:active {
 
 .mobile-grid-row {
   display: grid;
-  grid-template-columns: auto 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-bottom: 16px;
-  align-items: center;
+  align-items: start;
 }
 
 .mobile-grid-label {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
   color: #e6f3ff;
   font-weight: 600;
   font-size: 1.1em;
   font-family: 'Courier New', monospace;
-  min-width: 30px;
   text-align: center;
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 2px 8px;
+  border-radius: 4px;
 }
 
 .mobile-grid-cell {
+  position: relative;
   display: flex;
   flex-direction: column;
   border: 2px solid #4a5568;
