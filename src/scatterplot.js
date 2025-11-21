@@ -654,27 +654,31 @@ export class ScatterplotMatrix {
   }
 
   /**
-   * Draw player in mobile view cell
+   * Draw player sprite at specified position
+   * @param {number} px - X coordinate for player center
+   * @param {number} py - Y coordinate for player center
+   * @param {number} dimI - First dimension index
+   * @param {number} dimJ - Second dimension index
+   * @param {object} ui - UI state including shipType and forwardDir
    */
-  drawPlayerMobile(cellX, cellY, cellWidth, cellHeight, playerLocal, dimI, dimJ, ui) {
+  drawPlayerSprite(px, py, dimI, dimJ, ui) {
     const ctx = this.ctx;
 
-    // Always draw at the center of the cell
-    const px = cellX + cellWidth / 2;
-    const py = cellY + cellHeight / 2;
-
     if (ui.shipType === 'druuge') {
+      // Druuge ship: elongated along dimension 0 (forward direction in local space)
+      // If this cell involves dim 0, show elongated shape with cone; otherwise show square cross-section
       const f = ui.forwardDir || [1,0,0,0];
       const involvesDim0 = (dimI === 0 || dimJ === 0);
 
       ctx.save();
       ctx.translate(px, py);
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = 0.85; // Semi-transparent
       ctx.fillStyle = '#ffd166';
       ctx.strokeStyle = '#ff9f1c';
       ctx.lineWidth = 2;
 
       if (involvesDim0) {
+        // Elongated view: show cone-tipped shape oriented by forward direction
         const vx = f[dimJ] || 0;
         const vy = f[dimI] || 0;
         let ang = 0;
@@ -683,20 +687,24 @@ export class ScatterplotMatrix {
         }
         ctx.rotate(ang);
 
+        // Draw cone-tipped ship (rectangle + triangle at front)
         const bodyLen = 12, bodyHeight = 8, coneLen = 6;
         ctx.beginPath();
+        // Main body rectangle
         ctx.rect(-bodyLen/2, -bodyHeight/2, bodyLen, bodyHeight);
         ctx.fill();
         ctx.stroke();
 
+        // Front cone
         ctx.beginPath();
-        ctx.moveTo(bodyLen/2, -bodyHeight/2);
-        ctx.lineTo(bodyLen/2 + coneLen, 0);
-        ctx.lineTo(bodyLen/2, bodyHeight/2);
+        ctx.moveTo(bodyLen/2, -bodyHeight/2); // top of body
+        ctx.lineTo(bodyLen/2 + coneLen, 0);    // cone tip
+        ctx.lineTo(bodyLen/2, bodyHeight/2);   // bottom of body
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
       } else {
+        // Cross-section view: show square (perpendicular to forward direction)
         const size = 8;
         ctx.beginPath();
         ctx.rect(-size/2, -size/2, size, size);
@@ -705,8 +713,9 @@ export class ScatterplotMatrix {
       }
       ctx.restore();
     } else {
+      // Aerilou: blue dot
       ctx.save();
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = 0.85; // Semi-transparent
       ctx.fillStyle = '#00d4ff';
       ctx.strokeStyle = '#00ffff';
       ctx.lineWidth = 3;
@@ -716,6 +725,16 @@ export class ScatterplotMatrix {
       ctx.stroke();
       ctx.restore();
     }
+  }
+
+  /**
+   * Draw player in mobile view cell
+   */
+  drawPlayerMobile(cellX, cellY, cellWidth, cellHeight, playerLocal, dimI, dimJ, ui) {
+    // Always draw at the center of the cell
+    const px = cellX + cellWidth / 2;
+    const py = cellY + cellHeight / 2;
+    this.drawPlayerSprite(px, py, dimI, dimJ, ui);
   }
 
   /**
@@ -918,7 +937,6 @@ export class ScatterplotMatrix {
    * Draw player as a blue circle
    */
   drawPlayer(cellX, cellY, playerLocal, dimI, dimJ, ui) {
-    const ctx = this.ctx;
     const innerSize = this.cellSize - this.cellPadding * 2;
     const startX = cellX + this.cellPadding;
     const startY = cellY + this.cellPadding;
@@ -927,67 +945,7 @@ export class ScatterplotMatrix {
     const px = startX + innerSize / 2;
     const py = startY + innerSize / 2;
 
-    if (ui.shipType === 'druuge') {
-      // Druuge ship: elongated along dimension 0 (forward direction in local space)
-      // If this cell involves dim 0, show elongated shape with cone; otherwise show square cross-section
-      const f = ui.forwardDir || [1,0,0,0];
-      const involvesDim0 = (dimI === 0 || dimJ === 0);
-
-      ctx.save();
-      ctx.translate(px, py);
-      ctx.globalAlpha = 0.85; // Semi-transparent
-      ctx.fillStyle = '#ffd166';
-      ctx.strokeStyle = '#ff9f1c';
-      ctx.lineWidth = 2;
-
-      if (involvesDim0) {
-        // Elongated view: show cone-tipped shape oriented by forward direction
-        const vx = f[dimJ] || 0;
-        const vy = f[dimI] || 0;
-        let ang = 0;
-        if (Math.abs(vx) + Math.abs(vy) > 1e-6) {
-          ang = Math.atan2(-vy, vx);
-        }
-        ctx.rotate(ang);
-
-        // Draw cone-tipped ship (rectangle + triangle at front)
-        const bodyLen = 12, bodyHeight = 8, coneLen = 6;
-        ctx.beginPath();
-        // Main body rectangle
-        ctx.rect(-bodyLen/2, -bodyHeight/2, bodyLen, bodyHeight);
-        ctx.fill();
-        ctx.stroke();
-
-        // Front cone
-        ctx.beginPath();
-        ctx.moveTo(bodyLen/2, -bodyHeight/2); // top of body
-        ctx.lineTo(bodyLen/2 + coneLen, 0);    // cone tip
-        ctx.lineTo(bodyLen/2, bodyHeight/2);   // bottom of body
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-      } else {
-        // Cross-section view: show square (perpendicular to forward direction)
-        const size = 8;
-        ctx.beginPath();
-        ctx.rect(-size/2, -size/2, size, size);
-        ctx.fill();
-        ctx.stroke();
-      }
-      ctx.restore();
-    } else {
-      // Aerilou: blue dot
-      ctx.save();
-      ctx.globalAlpha = 0.85; // Semi-transparent
-      ctx.fillStyle = '#00d4ff';
-      ctx.strokeStyle = '#00ffff';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(px, py, 6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-    }
+    this.drawPlayerSprite(px, py, dimI, dimJ, ui);
   }
 
   drawPuffs(cellX, cellY, dimI, dimJ, ui) {
