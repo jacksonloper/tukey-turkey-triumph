@@ -44,6 +44,7 @@ export class RotationChallenge {
     // Display settings
     this.displayMode = 'vanilla'; // 'vanilla', 'rainbow', 'numbered', 'squirrel'
     this.gridEnabled = false;
+    this.mobileViewEnabled = false;
 
     // Rotation state
     this.rotationSpeed = Math.PI / 2; // rad/sec
@@ -163,7 +164,9 @@ export class RotationChallenge {
 
       if (heldDims) {
         const [i, j] = heldDims;
-        const angle = this.rotationSpeed * dt;
+        // Get rotation direction from scatterplot (1 = CW, -1 = CCW)
+        const direction = this.scatterplot.rotationDirection || 1;
+        const angle = this.rotationSpeed * dt * direction;
         const rotStep = rotationND(this.dimensions, i, j, angle);
         // Apply rotation in current local basis: post-multiply
         this.playerOrientation = matMultN(this.playerOrientation, rotStep);
@@ -326,6 +329,15 @@ export class RotationChallenge {
    */
   setGridEnabled(enabled) {
     this.gridEnabled = enabled;
+  }
+
+  /**
+   * Set mobile view enabled state
+   */
+  setMobileViewEnabled(enabled) {
+    this.mobileViewEnabled = enabled;
+    // Pass the setting to the scatterplot renderer
+    this.scatterplot.setMobileViewEnabled(enabled);
   }
 
   /**

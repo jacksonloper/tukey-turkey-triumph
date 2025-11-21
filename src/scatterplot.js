@@ -14,6 +14,12 @@ export class ScatterplotMatrix {
     this.padding = 40;
     this.cellPadding = 10;
 
+    // Mobile view settings
+    this.mobileViewEnabled = false;
+    
+    // Rotation direction for mobile controls (1 = clockwise, -1 = counterclockwise)
+    this.rotationDirection = 1;
+
     // World-grid rendering settings (cardinal basis)
     this.gridSpacing = 2.0; // world units between grid lines (half as many)
     this.gridRange = 4.0;   // cover initial field of view [-4,4]
@@ -47,7 +53,200 @@ export class ScatterplotMatrix {
     this.canvas.addEventListener('pointercancel', (e) => this.handlePointerUp(e));
   }
 
+  setMobileViewEnabled(enabled) {
+    this.mobileViewEnabled = enabled;
+    
+    // Get container elements
+    const mobileContainer = document.getElementById('mobile-grid-container');
+    
+    if (enabled) {
+      // Hide main canvas, show mobile grid
+      this.canvas.style.display = 'none';
+      if (mobileContainer) {
+        mobileContainer.style.display = 'block';
+        this.setupMobileGrid();
+      }
+    } else {
+      // Show main canvas, hide mobile grid
+      this.canvas.style.display = 'block';
+      if (mobileContainer) {
+        mobileContainer.style.display = 'none';
+        this.clearMobileGrid();
+      }
+      this.resize();
+    }
+  }
+
+  /**
+   * Set up the mobile grid with separate canvases
+   */
+  setupMobileGrid() {
+    const container = document.getElementById('mobile-grid-container');
+    if (!container) return;
+
+    // Clear existing content
+    container.innerHTML = '';
+
+    // Get all off-diagonal pairs where i < j (upper triangle only)
+    const pairs = [];
+    for (let row = 0; row < this.dimensions; row++) {
+      for (let col = 0; col < this.dimensions; col++) {
+        if (row < col) {  // Only show pairs where i < j
+          pairs.push([row, col]);
+        }
+      }
+    }
+
+    // Store canvas references for rendering
+    this.mobileCanvases = [];
+
+    // Create a row for each pair
+    pairs.forEach((pair, index) => {
+      const [row, col] = pair;
+      
+      // Create row container
+      const rowDiv = document.createElement('div');
+      rowDiv.className = 'mobile-grid-row';
+      
+      // Create target cell (left - shows orange fixed curve)
+      const targetCell = this.createMobileCell(row, col, 'target');
+      
+      // Add (i,j) label to target cell (after canvas, at bottom)
+      const coordLabelDiv = document.createElement('div');
+      coordLabelDiv.className = 'mobile-grid-label';
+      coordLabelDiv.textContent = `(${row + 1}, ${col + 1})`;
+      targetCell.container.appendChild(coordLabelDiv);
+      
+      rowDiv.appendChild(targetCell.container);
+      
+      // Create current cell (right - shows cyan rotating curve)
+      const currentCell = this.createMobileCell(row, col, 'current');
+      rowDiv.appendChild(currentCell.container);
+      
+      container.appendChild(rowDiv);
+      
+      // Store canvas references
+      this.mobileCanvases.push({
+        dims: [row, col],
+        targetCanvas: targetCell.canvas,
+        targetCtx: targetCell.ctx,
+        currentCanvas: currentCell.canvas,
+        currentCtx: currentCell.ctx
+      });
+    });
+  }
+
+  /**
+   * Create a mobile cell with its own canvas
+   */
+  createMobileCell(row, col, mode) {
+    const cellDiv = document.createElement('div');
+    cellDiv.className = 'mobile-grid-cell';
+    
+    // Create canvas container
+    const canvasContainer = document.createElement('div');
+    canvasContainer.className = 'mobile-canvas-container';
+    
+    // Create canvas
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Set canvas size (will be adjusted in render)
+    const size = 200; // Base size
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    
+    // Scale context for DPR
+    ctx.scale(dpr, dpr);
+    
+    canvasContainer.appendChild(canvas);
+    cellDiv.appendChild(canvasContainer);
+    
+    // Add rotation controls below canvas only for current cells
+    if (mode === 'current') {
+      // Shared reset function for rotation state
+      const resetRotation = () => {
+        this.isMouseDown = false;
+        this.holdDims = null;
+        this.rotationDirection = 1;
+      };
+      
+      // Create rotation button container (below canvas)
+      const rotationControls = document.createElement('div');
+      rotationControls.className = 'mobile-rotation-controls';
+      
+      // Counterclockwise button
+      const ccwButton = document.createElement('button');
+      ccwButton.className = 'mobile-rotation-btn ccw';
+      ccwButton.innerHTML = '↺ CCW';
+      ccwButton.title = 'Rotate counterclockwise';
+      ccwButton.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.isMouseDown = true;
+        this.holdDims = [row, col];
+        this.rotationDirection = -1; // Counterclockwise
+        this.clickCallbacks.forEach(cb => cb(row, col));
+      }, { passive: false });
+      
+      ccwButton.addEventListener('pointerup', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        resetRotation();
+      });
+      
+      ccwButton.addEventListener('pointerleave', resetRotation);
+      
+      // Clockwise button
+      const cwButton = document.createElement('button');
+      cwButton.className = 'mobile-rotation-btn cw';
+      cwButton.innerHTML = '↻ CW';
+      cwButton.title = 'Rotate clockwise';
+      cwButton.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.isMouseDown = true;
+        this.holdDims = [row, col];
+        this.rotationDirection = 1; // Clockwise
+        this.clickCallbacks.forEach(cb => cb(row, col));
+      }, { passive: false });
+      
+      cwButton.addEventListener('pointerup', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        resetRotation();
+      });
+      
+      cwButton.addEventListener('pointerleave', resetRotation);
+      
+      rotationControls.appendChild(ccwButton);
+      rotationControls.appendChild(cwButton);
+      cellDiv.appendChild(rotationControls);
+    }
+    
+    return { container: cellDiv, canvas, ctx };
+  }
+
+  /**
+   * Clear the mobile grid
+   */
+  clearMobileGrid() {
+    const container = document.getElementById('mobile-grid-container');
+    if (container) {
+      container.innerHTML = '';
+    }
+    this.mobileCanvases = [];
+  }
+
   resize() {
+    // Skip resize for mobile view (each canvas manages its own size)
+    if (this.mobileViewEnabled) {
+      return;
+    }
+
     // Calculate available width dynamically based on viewport
     // Mobile (< 600px): app padding 0.5rem, play-area padding 8px, border 2px
     // Desktop: app padding 1rem, play-area padding 12px, border 2px
@@ -57,18 +256,20 @@ export class ScatterplotMatrix {
     const playAreaBorder = 4; // 2px * 2 sides
     const totalPadding = appPadding + playAreaPadding + playAreaBorder;
 
+    // Normal grid view
     const size = Math.min(800, window.innerWidth - totalPadding);
+    const height = size;
 
     // Account for device pixel ratio for high-DPI displays
     const dpr = window.devicePixelRatio || 1;
 
     // Set canvas internal resolution (scaled by DPR)
     this.canvas.width = size * dpr;
-    this.canvas.height = size * dpr;
+    this.canvas.height = height * dpr;
 
     // Set canvas CSS size (display size)
     this.canvas.style.width = size + 'px';
-    this.canvas.style.height = size + 'px';
+    this.canvas.style.height = height + 'px';
 
     // IMPORTANT: Reset transform before scaling to avoid compounding
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -77,6 +278,7 @@ export class ScatterplotMatrix {
 
     // Store the display size for calculations
     this.displaySize = size;
+    this.displayHeight = height;
     this.cellSize = (size - this.padding * 2) / this.dimensions;
   }
 
@@ -100,11 +302,18 @@ export class ScatterplotMatrix {
   }
 
   getCellFromMouse(e) {
+    // Mobile view uses separate canvases with their own event handlers
+    // This method is only used for normal grid mode
+    if (this.mobileViewEnabled) {
+      return null;
+    }
+
     const rect = this.canvas.getBoundingClientRect();
     // Convert from screen coordinates to canvas display coordinates
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    // Normal grid mode
     // Determine which cell was clicked (using display size, not internal canvas size)
     const col = Math.floor((x - this.padding) / this.cellSize);
     const row = Math.floor((y - this.padding) / this.cellSize);
@@ -120,6 +329,12 @@ export class ScatterplotMatrix {
   }
 
   handlePointerDown(e) {
+    // In mobile view, canvases don't handle pointer events
+    // (only buttons do), so allow scrolling
+    if (this.mobileViewEnabled) {
+      return;
+    }
+    
     // Prevent scrolling/zoom while interacting
     if (e.cancelable) e.preventDefault();
     try { this.canvas.setPointerCapture(e.pointerId); } catch {}
@@ -141,6 +356,11 @@ export class ScatterplotMatrix {
   }
 
   handlePointerUp(e) {
+    // In mobile view, canvases don't handle pointer events
+    if (this.mobileViewEnabled) {
+      return;
+    }
+    
     this.isMouseDown = false;
     this.holdDims = null;
     try { this.canvas.releasePointerCapture(e.pointerId); } catch {}
@@ -228,7 +448,8 @@ export class ScatterplotMatrix {
           numDots: pathData.numDots,
           squirrel: pathData.squirrel,
           progress: pathData.progress,
-          arcLengths: pathData.arcLengths
+          arcLengths: pathData.arcLengths,
+          fixed: true  // IMPORTANT: Preserve the fixed property!
         };
       } else {
         // Rotating paths: transform by player orientation
@@ -243,21 +464,611 @@ export class ScatterplotMatrix {
           numDots: pathData.numDots,
           squirrel: pathData.squirrel,
           progress: pathData.progress,
-          arcLengths: pathData.arcLengths
+          arcLengths: pathData.arcLengths,
+          fixed: false  // IMPORTANT: Preserve the fixed property!
         };
       }
     }) : [];
 
-    // Draw each cell in the matrix
-    for (let row = 0; row < this.dimensions; row++) {
-      for (let col = 0; col < this.dimensions; col++) {
-        this.renderCell(row, col, playerLocal, turkeysLocal, ui, trailLocal, pathsLocal);
+    // Choose rendering mode
+    if (this.mobileViewEnabled) {
+      this.renderMobileView(playerLocal, turkeysLocal, ui, trailLocal, pathsLocal);
+    } else {
+      // Draw each cell in the matrix
+      for (let row = 0; row < this.dimensions; row++) {
+        for (let col = 0; col < this.dimensions; col++) {
+          this.renderCell(row, col, playerLocal, turkeysLocal, ui, trailLocal, pathsLocal);
+        }
+      }
+
+      // Draw grid and labels
+      this.drawGrid();
+      this.drawLabels();
+    }
+  }
+
+  /**
+   * Render mobile view: each (i,j) pair with separate target and current canvases
+   */
+  renderMobileView(playerLocal, turkeysLocal, ui, trailLocal, pathsLocal) {
+    if (!this.mobileCanvases || this.mobileCanvases.length === 0) {
+      return;
+    }
+
+    // Render each pair of canvases
+    this.mobileCanvases.forEach(canvasInfo => {
+      const [dimI, dimJ] = canvasInfo.dims;
+      
+      // Render target canvas (fixed paths - orange)
+      this.renderSingleMobileCanvas(
+        canvasInfo.targetCanvas,
+        canvasInfo.targetCtx,
+        dimI, dimJ,
+        playerLocal, turkeysLocal, ui, trailLocal, pathsLocal,
+        'target'
+      );
+      
+      // Render current canvas (rotating paths - cyan)
+      this.renderSingleMobileCanvas(
+        canvasInfo.currentCanvas,
+        canvasInfo.currentCtx,
+        dimI, dimJ,
+        playerLocal, turkeysLocal, ui, trailLocal, pathsLocal,
+        'current'
+      );
+    });
+  }
+
+  /**
+   * Render a single mobile canvas (either target or current)
+   */
+  renderSingleMobileCanvas(canvas, ctx, dimI, dimJ, playerLocal, turkeysLocal, ui, trailLocal, pathsLocal, mode) {
+    // Get canvas dimensions
+    const width = 200; // Base display size
+    const height = 200;
+    const padding = 10;
+    const innerWidth = width - padding * 2;
+    const innerHeight = height - padding * 2;
+    
+    // Clear canvas
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, width, height);
+
+    // Draw border
+    ctx.strokeStyle = '#4a5568';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(padding, padding, innerWidth, innerHeight);
+
+    // Draw world-aligned fixed grid (only if showGrid is true)
+    if (ui.showGrid !== false) {
+      this.drawWorldGridSeparate(ctx, padding, padding, innerWidth, innerHeight, dimI, dimJ);
+    }
+
+    // Filter paths based on mode
+    const filteredPaths = pathsLocal.filter(pathData => {
+      if (mode === 'target') {
+        return pathData.fixed; // Show only fixed (orange) paths
+      } else {
+        return !pathData.fixed; // Show only rotating (cyan) paths
+      }
+    });
+
+    // Draw paths
+    filteredPaths.forEach(pathData => {
+      this.drawPathSeparate(ctx, padding, padding, innerWidth, innerHeight, pathData, dimI, dimJ);
+    });
+
+    // Draw player (if enabled, typically not shown in rotation challenge)
+    if (ui.showPlayer !== false) {
+      this.drawPlayerSeparate(ctx, padding, padding, innerWidth, innerHeight, playerLocal, dimI, dimJ, ui);
+    }
+  }
+
+  /**
+   * Draw world grid in separate canvas
+   */
+  drawWorldGridSeparate(ctx, cellX, cellY, cellWidth, cellHeight, dimI, dimJ) {
+    const viewRange = this.gridRange;
+
+    // Clip to the inner plotting area
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(cellX, cellY, cellWidth, cellHeight);
+    ctx.clip();
+
+    const Rinv = this._orientationInverse;
+    const P = this._playerWorld;
+
+    if (!this._gridLinesWorld) this.buildWorldGridLines();
+
+    // Draw every precomputed world line
+    for (const line of this._gridLinesWorld) {
+      const a = line.a, b = line.b;
+      // Transform to oriented frame (Rinv * (world - P))
+      const la = matVecMultN(Rinv, a.map((v, i) => v - P[i]));
+      const lb = matVecMultN(Rinv, b.map((v, i) => v - P[i]));
+
+      // Quick reject: both endpoints outside on same side in either dim
+      const aI = la[dimI], bI = lb[dimI];
+      const aJ = la[dimJ], bJ = lb[dimJ];
+      const R = viewRange;
+      if ((aI < -R && bI < -R) || (aI > R && bI > R) || (aJ < -R && bJ < -R) || (aJ > R && bJ > R)) {
+        continue;
+      }
+
+      const px1 = cellX + ((aJ / viewRange) + 1) * cellWidth / 2;
+      const py1 = cellY + (1 - ((aI / viewRange) + 1) / 2) * cellHeight;
+      const px2 = cellX + ((bJ / viewRange) + 1) * cellWidth / 2;
+      const py2 = cellY + (1 - ((bI / viewRange) + 1) / 2) * cellHeight;
+
+      const isAxis = line.isAxis;
+      ctx.strokeStyle = isAxis ? this.gridZeroColor : this.gridColor;
+      ctx.lineWidth = isAxis ? this.gridLineWidth * 1.5 : this.gridLineWidth;
+      ctx.beginPath();
+      ctx.moveTo(px1, py1);
+      ctx.lineTo(px2, py2);
+      ctx.stroke();
+    }
+
+    // Emphasize world boundary of the fixed box at +/- viewRange along both dims
+    const drawBoundaryLine = (fixDim, fixVal, varyDim) => {
+      const a = new Array(this.dimensions).fill(0);
+      const b = new Array(this.dimensions).fill(0);
+      a[fixDim] = fixVal;
+      b[fixDim] = fixVal;
+      a[varyDim] = -viewRange;
+      b[varyDim] = +viewRange;
+      const la = matVecMultN(Rinv, a.map((v, i) => v - P[i]));
+      const lb = matVecMultN(Rinv, b.map((v, i) => v - P[i]));
+      // Map using the cell axes: x uses dimJ, y uses dimI
+      const x1 = cellX + ((la[dimJ] / viewRange) + 1) * cellWidth / 2;
+      const y1 = cellY + (1 - ((la[dimI] / viewRange) + 1) / 2) * cellHeight;
+      const x2 = cellX + ((lb[dimJ] / viewRange) + 1) * cellWidth / 2;
+      const y2 = cellY + (1 - ((lb[dimI] / viewRange) + 1) / 2) * cellHeight;
+      ctx.strokeStyle = this.gridBoundaryColor;
+      ctx.lineWidth = this.gridBoundaryLineWidth;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    };
+
+    drawBoundaryLine(dimI, -viewRange, dimJ);
+    drawBoundaryLine(dimI, +viewRange, dimJ);
+    drawBoundaryLine(dimJ, -viewRange, dimI);
+    drawBoundaryLine(dimJ, +viewRange, dimI);
+
+    ctx.restore();
+  }
+
+  /**
+   * Draw path in separate canvas
+   */
+  drawPathSeparate(ctx, cellX, cellY, cellWidth, cellHeight, pathData, dimI, dimJ) {
+    const viewRange = this.gridRange;
+
+    const { points, color, numbered, numDots = 6, squirrel, progress = 0, arcLengths } = pathData;
+
+    // Helper to project point to screen coordinates
+    const projectPoint = (point) => {
+      const px = cellX + (point[dimJ] / viewRange + 1) * cellWidth / 2;
+      const py = cellY + (1 - (point[dimI] / viewRange + 1) / 2) * cellHeight;
+      return [px, py];
+    };
+
+    // Rainbow mode
+    if (color === 'rainbow') {
+      ctx.save();
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const t = i / (points.length - 1);
+        const hue = t * 360;
+        ctx.strokeStyle = `hsl(${hue}, 100%, 60%)`;
+        
+        const [px1, py1] = projectPoint(points[i]);
+        const [px2, py2] = projectPoint(points[i + 1]);
+        
+        ctx.beginPath();
+        ctx.moveTo(px1, py1);
+        ctx.lineTo(px2, py2);
+        ctx.stroke();
+      }
+      ctx.restore();
+      return;
+    }
+
+    // Numbered mode
+    if (numbered) {
+      ctx.save();
+      
+      ctx.strokeStyle = color.replace('0.8', '0.3');
+      ctx.lineWidth = 1;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      ctx.beginPath();
+      let firstPoint = true;
+      for (let i = 0; i < points.length; i++) {
+        const [px, py] = projectPoint(points[i]);
+        if (firstPoint) {
+          ctx.moveTo(px, py);
+          firstPoint = false;
+        } else {
+          ctx.lineTo(px, py);
+        }
+      }
+      ctx.stroke();
+
+      for (let n = 0; n < numDots; n++) {
+        const idx = Math.floor(n * (points.length - 1) / (numDots - 1));
+        const point = points[idx];
+        const [px, py] = projectPoint(point);
+        
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(px, py, 6, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 10px Courier New';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText((n + 1).toString(), px, py);
+      }
+      
+      ctx.restore();
+      return;
+    }
+
+    // Squirrel mode
+    if (squirrel) {
+      ctx.save();
+      
+      ctx.strokeStyle = color.replace('0.8', '0.3');
+      ctx.lineWidth = 1;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      ctx.beginPath();
+      let firstPoint = true;
+      for (let i = 0; i < points.length; i++) {
+        const [px, py] = projectPoint(points[i]);
+        if (firstPoint) {
+          ctx.moveTo(px, py);
+          firstPoint = false;
+        } else {
+          ctx.lineTo(px, py);
+        }
+      }
+      ctx.stroke();
+
+      let idx;
+      if (arcLengths && arcLengths.length > 0) {
+        const totalLength = arcLengths[arcLengths.length - 1];
+        const targetLength = progress * totalLength;
+        
+        idx = 0;
+        for (let i = 0; i < arcLengths.length - 1; i++) {
+          if (arcLengths[i] <= targetLength && targetLength < arcLengths[i + 1]) {
+            idx = i;
+            break;
+          }
+        }
+        if (targetLength >= totalLength - 0.001) {
+          idx = points.length - 1;
+        }
+      } else {
+        idx = Math.floor(progress * (points.length - 1));
+      }
+      
+      const point = points[idx];
+      const [px, py] = projectPoint(point);
+      
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(px, py, 5, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      ctx.beginPath();
+      ctx.arc(px - 3, py - 4, 2, 0, 2 * Math.PI);
+      ctx.arc(px + 3, py - 4, 2, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      ctx.restore();
+      return;
+    }
+
+    // Vanilla mode
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.beginPath();
+    let firstPoint = true;
+
+    for (let i = 0; i < points.length; i++) {
+      const [px, py] = projectPoint(points[i]);
+
+      if (firstPoint) {
+        ctx.moveTo(px, py);
+        firstPoint = false;
+      } else {
+        ctx.lineTo(px, py);
       }
     }
 
-    // Draw grid and labels
-    this.drawGrid();
-    this.drawLabels();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /**
+   * Draw player in separate canvas
+   */
+  drawPlayerSeparate(ctx, cellX, cellY, cellWidth, cellHeight, playerLocal, dimI, dimJ, ui) {
+    // Always draw at the center of the cell
+    const px = cellX + cellWidth / 2;
+    const py = cellY + cellHeight / 2;
+    
+    // Use existing drawPlayerSprite with the provided ctx
+    const originalCtx = this.ctx;
+    this.ctx = ctx;
+    this.drawPlayerSprite(px, py, dimI, dimJ, ui);
+    this.ctx = originalCtx;
+  }
+
+  /**
+   * Draw path in mobile view cell (old single-canvas method, kept for normal grid mode)
+   */
+  drawPathMobile(cellX, cellY, cellWidth, cellHeight, pathData, dimI, dimJ) {
+    const ctx = this.ctx;
+    const viewRange = this.gridRange;
+
+    const { points, color, numbered, numDots = 6, squirrel, progress = 0, arcLengths } = pathData;
+
+    // Helper to project point to screen coordinates
+    const projectPoint = (point) => {
+      const px = cellX + (point[dimJ] / viewRange + 1) * cellWidth / 2;
+      const py = cellY + (1 - (point[dimI] / viewRange + 1) / 2) * cellHeight;
+      return [px, py];
+    };
+
+    // Rainbow mode
+    if (color === 'rainbow') {
+      ctx.save();
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const t = i / (points.length - 1);
+        const hue = t * 360;
+        ctx.strokeStyle = `hsl(${hue}, 100%, 60%)`;
+        
+        const [px1, py1] = projectPoint(points[i]);
+        const [px2, py2] = projectPoint(points[i + 1]);
+        
+        ctx.beginPath();
+        ctx.moveTo(px1, py1);
+        ctx.lineTo(px2, py2);
+        ctx.stroke();
+      }
+      ctx.restore();
+      return;
+    }
+
+    // Numbered mode
+    if (numbered) {
+      ctx.save();
+      
+      ctx.strokeStyle = color.replace('0.8', '0.3');
+      ctx.lineWidth = 1;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      ctx.beginPath();
+      let firstPoint = true;
+      for (let i = 0; i < points.length; i++) {
+        const [px, py] = projectPoint(points[i]);
+        if (firstPoint) {
+          ctx.moveTo(px, py);
+          firstPoint = false;
+        } else {
+          ctx.lineTo(px, py);
+        }
+      }
+      ctx.stroke();
+
+      for (let n = 0; n < numDots; n++) {
+        const idx = Math.floor(n * (points.length - 1) / (numDots - 1));
+        const point = points[idx];
+        const [px, py] = projectPoint(point);
+        
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(px, py, 6, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 10px Courier New';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText((n + 1).toString(), px, py);
+      }
+      
+      ctx.restore();
+      return;
+    }
+
+    // Squirrel mode
+    if (squirrel) {
+      ctx.save();
+      
+      ctx.strokeStyle = color.replace('0.8', '0.3');
+      ctx.lineWidth = 1;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      ctx.beginPath();
+      let firstPoint = true;
+      for (let i = 0; i < points.length; i++) {
+        const [px, py] = projectPoint(points[i]);
+        if (firstPoint) {
+          ctx.moveTo(px, py);
+          firstPoint = false;
+        } else {
+          ctx.lineTo(px, py);
+        }
+      }
+      ctx.stroke();
+
+      let idx;
+      if (arcLengths && arcLengths.length > 0) {
+        const totalLength = arcLengths[arcLengths.length - 1];
+        const targetLength = progress * totalLength;
+        
+        idx = 0;
+        for (let i = 0; i < arcLengths.length - 1; i++) {
+          if (arcLengths[i] <= targetLength && targetLength < arcLengths[i + 1]) {
+            idx = i;
+            break;
+          }
+        }
+        if (targetLength >= totalLength - 0.001) {
+          idx = points.length - 1;
+        }
+      } else {
+        idx = Math.floor(progress * (points.length - 1));
+      }
+      
+      const point = points[idx];
+      const [px, py] = projectPoint(point);
+      
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(px, py, 5, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      ctx.beginPath();
+      ctx.arc(px - 3, py - 4, 2, 0, 2 * Math.PI);
+      ctx.arc(px + 3, py - 4, 2, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      ctx.restore();
+      return;
+    }
+
+    // Vanilla mode
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.beginPath();
+    let firstPoint = true;
+
+    for (let i = 0; i < points.length; i++) {
+      const [px, py] = projectPoint(points[i]);
+
+      if (firstPoint) {
+        ctx.moveTo(px, py);
+        firstPoint = false;
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /**
+   * Draw player sprite at specified position
+   * @param {number} px - X coordinate for player center
+   * @param {number} py - Y coordinate for player center
+   * @param {number} dimI - First dimension index
+   * @param {number} dimJ - Second dimension index
+   * @param {object} ui - UI state including shipType and forwardDir
+   */
+  drawPlayerSprite(px, py, dimI, dimJ, ui) {
+    const ctx = this.ctx;
+
+    if (ui.shipType === 'druuge') {
+      // Druuge ship: elongated along dimension 0 (forward direction in local space)
+      // If this cell involves dim 0, show elongated shape with cone; otherwise show square cross-section
+      const f = ui.forwardDir || [1,0,0,0];
+      const involvesDim0 = (dimI === 0 || dimJ === 0);
+
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.globalAlpha = 0.85; // Semi-transparent
+      ctx.fillStyle = '#ffd166';
+      ctx.strokeStyle = '#ff9f1c';
+      ctx.lineWidth = 2;
+
+      if (involvesDim0) {
+        // Elongated view: show cone-tipped shape oriented by forward direction
+        const vx = f[dimJ] || 0;
+        const vy = f[dimI] || 0;
+        let ang = 0;
+        if (Math.abs(vx) + Math.abs(vy) > 1e-6) {
+          ang = Math.atan2(-vy, vx);
+        }
+        ctx.rotate(ang);
+
+        // Draw cone-tipped ship (rectangle + triangle at front)
+        const bodyLen = 12, bodyHeight = 8, coneLen = 6;
+        ctx.beginPath();
+        // Main body rectangle
+        ctx.rect(-bodyLen/2, -bodyHeight/2, bodyLen, bodyHeight);
+        ctx.fill();
+        ctx.stroke();
+
+        // Front cone
+        ctx.beginPath();
+        ctx.moveTo(bodyLen/2, -bodyHeight/2); // top of body
+        ctx.lineTo(bodyLen/2 + coneLen, 0);    // cone tip
+        ctx.lineTo(bodyLen/2, bodyHeight/2);   // bottom of body
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        // Cross-section view: show square (perpendicular to forward direction)
+        const size = 8;
+        ctx.beginPath();
+        ctx.rect(-size/2, -size/2, size, size);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.restore();
+    } else {
+      // Aerilou: blue dot
+      ctx.save();
+      ctx.globalAlpha = 0.85; // Semi-transparent
+      ctx.fillStyle = '#00d4ff';
+      ctx.strokeStyle = '#00ffff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  /**
+   * Draw player in mobile view cell
+   */
+  drawPlayerMobile(cellX, cellY, cellWidth, cellHeight, playerLocal, dimI, dimJ, ui) {
+    // Always draw at the center of the cell
+    const px = cellX + cellWidth / 2;
+    const py = cellY + cellHeight / 2;
+    this.drawPlayerSprite(px, py, dimI, dimJ, ui);
   }
 
   /**
@@ -460,7 +1271,6 @@ export class ScatterplotMatrix {
    * Draw player as a blue circle
    */
   drawPlayer(cellX, cellY, playerLocal, dimI, dimJ, ui) {
-    const ctx = this.ctx;
     const innerSize = this.cellSize - this.cellPadding * 2;
     const startX = cellX + this.cellPadding;
     const startY = cellY + this.cellPadding;
@@ -469,67 +1279,7 @@ export class ScatterplotMatrix {
     const px = startX + innerSize / 2;
     const py = startY + innerSize / 2;
 
-    if (ui.shipType === 'druuge') {
-      // Druuge ship: elongated along dimension 0 (forward direction in local space)
-      // If this cell involves dim 0, show elongated shape with cone; otherwise show square cross-section
-      const f = ui.forwardDir || [1,0,0,0];
-      const involvesDim0 = (dimI === 0 || dimJ === 0);
-
-      ctx.save();
-      ctx.translate(px, py);
-      ctx.globalAlpha = 0.85; // Semi-transparent
-      ctx.fillStyle = '#ffd166';
-      ctx.strokeStyle = '#ff9f1c';
-      ctx.lineWidth = 2;
-
-      if (involvesDim0) {
-        // Elongated view: show cone-tipped shape oriented by forward direction
-        const vx = f[dimJ] || 0;
-        const vy = f[dimI] || 0;
-        let ang = 0;
-        if (Math.abs(vx) + Math.abs(vy) > 1e-6) {
-          ang = Math.atan2(-vy, vx);
-        }
-        ctx.rotate(ang);
-
-        // Draw cone-tipped ship (rectangle + triangle at front)
-        const bodyLen = 12, bodyHeight = 8, coneLen = 6;
-        ctx.beginPath();
-        // Main body rectangle
-        ctx.rect(-bodyLen/2, -bodyHeight/2, bodyLen, bodyHeight);
-        ctx.fill();
-        ctx.stroke();
-
-        // Front cone
-        ctx.beginPath();
-        ctx.moveTo(bodyLen/2, -bodyHeight/2); // top of body
-        ctx.lineTo(bodyLen/2 + coneLen, 0);    // cone tip
-        ctx.lineTo(bodyLen/2, bodyHeight/2);   // bottom of body
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-      } else {
-        // Cross-section view: show square (perpendicular to forward direction)
-        const size = 8;
-        ctx.beginPath();
-        ctx.rect(-size/2, -size/2, size, size);
-        ctx.fill();
-        ctx.stroke();
-      }
-      ctx.restore();
-    } else {
-      // Aerilou: blue dot
-      ctx.save();
-      ctx.globalAlpha = 0.85; // Semi-transparent
-      ctx.fillStyle = '#00d4ff';
-      ctx.strokeStyle = '#00ffff';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(px, py, 6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-    }
+    this.drawPlayerSprite(px, py, dimI, dimJ, ui);
   }
 
   drawPuffs(cellX, cellY, dimI, dimJ, ui) {
