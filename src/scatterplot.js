@@ -142,15 +142,15 @@ export class ScatterplotMatrix {
     const cellDiv = document.createElement('div');
     cellDiv.className = 'mobile-grid-cell';
     
-    // Set height for square cells (will adjust via CSS aspect-ratio if needed)
-    cellDiv.style.aspectRatio = '1';
-    cellDiv.style.minHeight = '150px';
-    
     // Create label
     const labelDiv = document.createElement('div');
     labelDiv.className = `mobile-grid-cell-label ${mode}`;
     labelDiv.textContent = mode === 'target' ? 'Target' : 'Current';
     cellDiv.appendChild(labelDiv);
+    
+    // Create canvas container
+    const canvasContainer = document.createElement('div');
+    canvasContainer.className = 'mobile-canvas-container';
     
     // Create canvas
     const canvas = document.createElement('canvas');
@@ -167,7 +167,10 @@ export class ScatterplotMatrix {
     // Scale context for DPR
     ctx.scale(dpr, dpr);
     
-    // Add rotation controls only for current cells
+    canvasContainer.appendChild(canvas);
+    cellDiv.appendChild(canvasContainer);
+    
+    // Add rotation controls below canvas only for current cells
     if (mode === 'current') {
       // Shared reset function for rotation state
       const resetRotation = () => {
@@ -176,14 +179,14 @@ export class ScatterplotMatrix {
         this.rotationDirection = 1;
       };
       
-      // Create rotation button container
+      // Create rotation button container (below canvas)
       const rotationControls = document.createElement('div');
       rotationControls.className = 'mobile-rotation-controls';
       
       // Counterclockwise button
       const ccwButton = document.createElement('button');
       ccwButton.className = 'mobile-rotation-btn ccw';
-      ccwButton.innerHTML = '↺';
+      ccwButton.innerHTML = '↺ CCW';
       ccwButton.title = 'Rotate counterclockwise';
       ccwButton.addEventListener('pointerdown', (e) => {
         e.preventDefault();
@@ -205,7 +208,7 @@ export class ScatterplotMatrix {
       // Clockwise button
       const cwButton = document.createElement('button');
       cwButton.className = 'mobile-rotation-btn cw';
-      cwButton.innerHTML = '↻';
+      cwButton.innerHTML = '↻ CW';
       cwButton.title = 'Rotate clockwise';
       cwButton.addEventListener('pointerdown', (e) => {
         e.preventDefault();
@@ -228,8 +231,6 @@ export class ScatterplotMatrix {
       rotationControls.appendChild(cwButton);
       cellDiv.appendChild(rotationControls);
     }
-    
-    cellDiv.appendChild(canvas);
     
     return { container: cellDiv, canvas, ctx };
   }

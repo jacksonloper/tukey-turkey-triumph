@@ -396,14 +396,22 @@ button:active {
 }
 
 .mobile-grid-cell {
-  position: relative;
+  display: flex;
+  flex-direction: column;
   border: 2px solid #4a5568;
   border-radius: 6px;
   background-color: #000000;
   overflow: hidden;
 }
 
-.mobile-grid-cell canvas {
+.mobile-canvas-container {
+  position: relative;
+  flex: 1;
+  min-height: 150px;
+  aspect-ratio: 1;
+}
+
+.mobile-canvas-container canvas {
   display: block;
   width: 100%;
   height: 100%;
@@ -433,23 +441,21 @@ button:active {
 }
 
 .mobile-rotation-controls {
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
-  gap: 8px;
-  z-index: 2;
+  gap: 6px;
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.5);
+  border-top: 1px solid #4a5568;
 }
 
 .mobile-rotation-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  flex: 1;
+  height: 36px;
+  border-radius: 4px;
   background: rgba(0, 0, 0, 0.7);
   border: 2px solid #00d4ff;
   color: #00d4ff;
-  font-size: 24px;
+  font-size: 14px;
   font-weight: bold;
   cursor: pointer;
   display: flex;
@@ -464,12 +470,11 @@ button:active {
 .mobile-rotation-btn:hover {
   background: rgba(0, 212, 255, 0.2);
   border-color: #00ffff;
-  transform: scale(1.05);
 }
 
 .mobile-rotation-btn:active {
   background: rgba(0, 212, 255, 0.4);
-  transform: scale(0.95);
+  transform: scale(0.98);
 }
 
 footer {
