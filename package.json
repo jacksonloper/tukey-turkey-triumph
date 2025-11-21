@@ -14,7 +14,6 @@
     "vitest": "^2.0.0"
   },
   "dependencies": {
-    "mathjs": "^11.5.0",
-    "numeric": "^1.2.6"
+    "mathjs": "file:.dependencies/mathjs-15.1.0.tgz"
   }
 }

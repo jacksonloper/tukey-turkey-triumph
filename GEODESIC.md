@@ -31,28 +31,31 @@ where:
 
 ## Matrix Logarithm for Unitary Matrices
 
-For a unitary (or orthogonal) matrix U, the logarithm is computed using eigendecomposition:
+The matrix logarithm is computed using the **inverse scaling and squaring method** with Taylor series expansion, as implemented in the mathjs fork.
 
-```
-log(U) = V diag(i·θ_j) V^{-1}
-```
+### Algorithm Overview
 
-where:
-- V contains the eigenvectors of U
-- λ_j = e^(i·θ_j) are the eigenvalues
-- θ_j = arg(λ_j) are the principal arguments (phases) in [-π, π]
+1. **Square Root Iterations**: The matrix is repeatedly square-rooted until it is close to the identity matrix
+2. **Taylor Series**: Once ||A - I|| < 0.5, use the Taylor series:
+   ```
+   log(I + X) ≈ Σ_{k=1}^∞ (-1)^{k+1} X^k / k
+   ```
+3. **Scaling Back**: The result is multiplied by 2^m, where m is the number of square roots taken
 
-### Implementation Details
+This approach is based on:
+- "Functions of Matrices: Theory and Computation" by N. J. Higham (2008)
+- scipy.linalg.logm implementation
 
-1. **Eigendecomposition**: Use numeric.js to compute eigenvalues and eigenvectors
-2. **Phase Extraction**: θ_j = atan2(im(λ_j), re(λ_j))
-3. **Logarithm**: Construct diagonal matrix with i·θ_j entries
-4. **Reconstruction**: log(U) = V · diag(i·θ_j) · V^{-1}
+### Advantages
+
+- More numerically stable than eigendecomposition for ill-conditioned matrices
+- Handles a wider range of matrix types
+- Better accuracy for matrices far from identity
 
 ### Special Cases
 
 - **Identity Matrix**: log(I) = 0 (zero matrix)
-- **Small Rotations**: For rotations close to identity, the logarithm is approximately the generator
+- **Small Rotations**: For rotations close to identity, fewer iterations are needed
 
 ## Derivatives with Respect to Swivel Parameters
 
@@ -134,19 +137,20 @@ const derivative = dGeodesicAtZeroArray(R, T, K);
 
 ## References
 
-1. **Matrix Lie Groups and Lie Algebras**: The connection between SO(n) and so(n) via the exponential map
-2. **Riemannian Geometry**: Geodesic distances on matrix manifolds
-3. **Numerical Matrix Functions**: Computing matrix exponentials and logarithms
+1. **"Functions of Matrices: Theory and Computation"** by N. J. Higham (2008) - Mathematical foundation for matrix logarithm
+2. **scipy.linalg.logm** - Reference implementation using inverse scaling and squaring
+3. **Matrix Lie Groups and Lie Algebras**: The connection between SO(n) and so(n) via the exponential map
+4. **Riemannian Geometry**: Geodesic distances on matrix manifolds
 
 ## Implementation Notes
 
-- Uses **mathjs** for matrix operations and complex arithmetic
-- Uses **numeric.js** for eigendecomposition
-- Handles edge cases (identity matrix, near-singular eigenvector matrices)
+- Uses **mathjs fork** with built-in `logm` function implementing inverse scaling and squaring method
+- Much simpler and more robust than custom eigendecomposition approach
+- Better numerical stability for a wider range of matrices
 - Optimized for real orthogonal matrices (common case)
 
 ## Limitations
 
-- The eigendecomposition approach can be numerically unstable for nearly-degenerate eigenvalues
 - For very large matrices (n > 10), performance may degrade
 - Assumes proper rotation matrices (orthogonal with det = +1)
+- The inverse scaling and squaring method may require many iterations for matrices far from identity

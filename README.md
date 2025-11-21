@@ -127,7 +127,7 @@ The geodesic distance is computed as:
 d(R, T) = || log(R^* T) ||_F
 ```
 
-where `log` is the matrix logarithm for unitary/orthogonal matrices, computed via eigendecomposition.
+where `log` is the matrix logarithm for unitary/orthogonal matrices, computed using the inverse scaling and squaring method with Taylor series expansion.
 
 The derivative function computes:
 ```
@@ -136,7 +136,7 @@ d/dε [d(H(ε), T)]_{ε=0}  where  H(ε) = R exp(ε K)
 
 This uses central finite differences for numerical differentiation. See `src/geodesic-example.js` for usage examples.
 
-**Dependencies:** The geodesic functions require `mathjs` and `numeric` packages, which are included as dependencies.
+**Dependencies:** The geodesic functions use a fork of `mathjs` with `logm` (matrix logarithm) support, included as a local dependency.
 
 ## Credits
 - Inspired by John W. Tukey's exploratory data analysis
