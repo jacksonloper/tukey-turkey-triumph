@@ -369,6 +369,68 @@ button:active {
   cursor: pointer;
 }
 
+/* Mobile grid container */
+.mobile-grid-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.mobile-grid-row {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.mobile-grid-label {
+  color: #e6f3ff;
+  font-weight: 600;
+  font-size: 1.1em;
+  font-family: 'Courier New', monospace;
+  min-width: 60px;
+  text-align: right;
+  padding-right: 8px;
+}
+
+.mobile-grid-cell {
+  position: relative;
+  border: 2px solid #4a5568;
+  border-radius: 6px;
+  background-color: #000000;
+  overflow: hidden;
+}
+
+.mobile-grid-cell canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.mobile-grid-cell-label {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-weight: 600;
+  font-size: 0.95em;
+  font-family: 'Courier New', monospace;
+  pointer-events: none;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+  z-index: 1;
+}
+
+.mobile-grid-cell-label.target {
+  color: #ff8c00;
+}
+
+.mobile-grid-cell-label.current {
+  color: #00ffff;
+}
+
 footer {
   text-align: center;
   padding: 2rem 0 1rem;

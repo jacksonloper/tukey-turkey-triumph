@@ -54,10 +54,160 @@ export class ScatterplotMatrix {
 
   setMobileViewEnabled(enabled) {
     this.mobileViewEnabled = enabled;
-    this.resize();
+    
+    // Get container elements
+    const mobileContainer = document.getElementById('mobile-grid-container');
+    
+    if (enabled) {
+      // Hide main canvas, show mobile grid
+      this.canvas.style.display = 'none';
+      if (mobileContainer) {
+        mobileContainer.style.display = 'block';
+        this.setupMobileGrid();
+      }
+    } else {
+      // Show main canvas, hide mobile grid
+      this.canvas.style.display = 'block';
+      if (mobileContainer) {
+        mobileContainer.style.display = 'none';
+        this.clearMobileGrid();
+      }
+      this.resize();
+    }
+  }
+
+  /**
+   * Set up the mobile grid with separate canvases
+   */
+  setupMobileGrid() {
+    const container = document.getElementById('mobile-grid-container');
+    if (!container) return;
+
+    // Clear existing content
+    container.innerHTML = '';
+
+    // Get all off-diagonal pairs
+    const pairs = [];
+    for (let row = 0; row < this.dimensions; row++) {
+      for (let col = 0; col < this.dimensions; col++) {
+        if (row !== col) {
+          pairs.push([row, col]);
+        }
+      }
+    }
+
+    // Store canvas references for rendering
+    this.mobileCanvases = [];
+
+    // Create a row for each pair
+    pairs.forEach((pair, index) => {
+      const [row, col] = pair;
+      
+      // Create row container
+      const rowDiv = document.createElement('div');
+      rowDiv.className = 'mobile-grid-row';
+      
+      // Create label
+      const labelDiv = document.createElement('div');
+      labelDiv.className = 'mobile-grid-label';
+      labelDiv.textContent = `(${row + 1}, ${col + 1})`;
+      rowDiv.appendChild(labelDiv);
+      
+      // Create target cell
+      const targetCell = this.createMobileCell('target', row, col, index, 'target');
+      rowDiv.appendChild(targetCell.container);
+      
+      // Create current cell
+      const currentCell = this.createMobileCell('current', row, col, index, 'current');
+      rowDiv.appendChild(currentCell.container);
+      
+      container.appendChild(rowDiv);
+      
+      // Store canvas references
+      this.mobileCanvases.push({
+        dims: [row, col],
+        targetCanvas: targetCell.canvas,
+        targetCtx: targetCell.ctx,
+        currentCanvas: currentCell.canvas,
+        currentCtx: currentCell.ctx
+      });
+    });
+  }
+
+  /**
+   * Create a mobile cell with its own canvas
+   */
+  createMobileCell(type, row, col, index, mode) {
+    const cellDiv = document.createElement('div');
+    cellDiv.className = 'mobile-grid-cell';
+    
+    // Set height for square cells (will adjust via CSS aspect-ratio if needed)
+    cellDiv.style.aspectRatio = '1';
+    cellDiv.style.minHeight = '150px';
+    
+    // Create label
+    const labelDiv = document.createElement('div');
+    labelDiv.className = `mobile-grid-cell-label ${mode}`;
+    labelDiv.textContent = mode === 'target' ? 'Target' : 'Current';
+    cellDiv.appendChild(labelDiv);
+    
+    // Create canvas
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Set canvas size (will be adjusted in render)
+    const size = 200; // Base size
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    
+    // Scale context for DPR
+    ctx.scale(dpr, dpr);
+    
+    // Add click/touch handling only for current cells (for rotation)
+    if (mode === 'current') {
+      canvas.addEventListener('pointerdown', (e) => {
+        if (e.cancelable) e.preventDefault();
+        this.isMouseDown = true;
+        this.holdDims = [row, col];
+        this.clickCallbacks.forEach(cb => cb(row, col));
+      }, { passive: false });
+      
+      canvas.addEventListener('pointerup', () => {
+        this.isMouseDown = false;
+        this.holdDims = null;
+      });
+      
+      canvas.addEventListener('pointerleave', () => {
+        this.isMouseDown = false;
+        this.holdDims = null;
+      });
+    }
+    
+    cellDiv.appendChild(canvas);
+    
+    return { container: cellDiv, canvas, ctx };
+  }
+
+  /**
+   * Clear the mobile grid
+   */
+  clearMobileGrid() {
+    const container = document.getElementById('mobile-grid-container');
+    if (container) {
+      container.innerHTML = '';
+    }
+    this.mobileCanvases = [];
   }
 
   resize() {
+    // Skip resize for mobile view (each canvas manages its own size)
+    if (this.mobileViewEnabled) {
+      return;
+    }
+
     // Calculate available width dynamically based on viewport
     // Mobile (< 600px): app padding 0.5rem, play-area padding 8px, border 2px
     // Desktop: app padding 1rem, play-area padding 12px, border 2px
@@ -67,23 +217,9 @@ export class ScatterplotMatrix {
     const playAreaBorder = 4; // 2px * 2 sides
     const totalPadding = appPadding + playAreaPadding + playAreaBorder;
 
-    let size, height;
-    
-    if (this.mobileViewEnabled) {
-      // Mobile view: vertical layout, each (i,j) pair on its own row
-      // Calculate number of off-diagonal pairs
-      const numPairs = this.dimensions * (this.dimensions - 1); // all off-diagonal cells
-      
-      size = Math.min(800, window.innerWidth - totalPadding);
-      height = numPairs * this.mobileRowHeight + this.padding * 2;
-      
-      // Calculate width for each plot (two plots per row)
-      this.mobileCellWidth = (size - this.padding * 3) / 2; // 3 gaps: left, middle, right
-    } else {
-      // Normal grid view
-      size = Math.min(800, window.innerWidth - totalPadding);
-      height = size;
-    }
+    // Normal grid view
+    const size = Math.min(800, window.innerWidth - totalPadding);
+    const height = size;
 
     // Account for device pixel ratio for high-DPI displays
     const dpr = window.devicePixelRatio || 1;
@@ -277,7 +413,8 @@ export class ScatterplotMatrix {
           numDots: pathData.numDots,
           squirrel: pathData.squirrel,
           progress: pathData.progress,
-          arcLengths: pathData.arcLengths
+          arcLengths: pathData.arcLengths,
+          fixed: true  // IMPORTANT: Preserve the fixed property!
         };
       } else {
         // Rotating paths: transform by player orientation
@@ -292,7 +429,8 @@ export class ScatterplotMatrix {
           numDots: pathData.numDots,
           squirrel: pathData.squirrel,
           progress: pathData.progress,
-          arcLengths: pathData.arcLengths
+          arcLengths: pathData.arcLengths,
+          fixed: false  // IMPORTANT: Preserve the fixed property!
         };
       }
     }) : [];
@@ -315,99 +453,60 @@ export class ScatterplotMatrix {
   }
 
   /**
-   * Render mobile view: each (i,j) pair on its own row with two columns
+   * Render mobile view: each (i,j) pair with separate canvases
    */
   renderMobileView(playerLocal, turkeysLocal, ui, trailLocal, pathsLocal) {
-    const ctx = this.ctx;
-    const width = this.displaySize;
-    const height = this.displayHeight;
-
-    // Clear with black background
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, width, height);
-
-    // Get all off-diagonal pairs
-    const pairs = [];
-    for (let row = 0; row < this.dimensions; row++) {
-      for (let col = 0; col < this.dimensions; col++) {
-        if (row !== col) {
-          pairs.push([row, col]);
-        }
-      }
+    if (!this.mobileCanvases || this.mobileCanvases.length === 0) {
+      return;
     }
 
-    // Render each pair on its own row
-    pairs.forEach((pair, index) => {
-      const [row, col] = pair;
-      const y = this.padding + index * this.mobileRowHeight;
-
-      // Draw row label
-      ctx.fillStyle = '#e0e0e0';
-      ctx.font = 'bold 16px Courier New';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      ctx.fillText(`(${row + 1}, ${col + 1})`, this.padding / 2, y + 10);
-
-      // Left column: Target (fixed, orange)
-      const leftX = this.padding;
-      this.renderMobileCell(leftX, y, this.mobileCellWidth, this.mobileRowHeight - 10,
-        row, col, playerLocal, turkeysLocal, ui, trailLocal, pathsLocal, 'target');
-
-      // Column divider
-      ctx.strokeStyle = '#646cff';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(leftX + this.mobileCellWidth + this.padding / 2, y);
-      ctx.lineTo(leftX + this.mobileCellWidth + this.padding / 2, y + this.mobileRowHeight - 10);
-      ctx.stroke();
-
-      // Right column: Current (rotating, cyan)
-      const rightX = leftX + this.mobileCellWidth + this.padding;
-      this.renderMobileCell(rightX, y, this.mobileCellWidth, this.mobileRowHeight - 10,
-        row, col, playerLocal, turkeysLocal, ui, trailLocal, pathsLocal, 'current');
-
-      // Row divider
-      if (index < pairs.length - 1) {
-        ctx.strokeStyle = '#646cff';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(this.padding, y + this.mobileRowHeight);
-        ctx.lineTo(width - this.padding, y + this.mobileRowHeight);
-        ctx.stroke();
-      }
+    // Render each canvas
+    this.mobileCanvases.forEach(canvasInfo => {
+      const [dimI, dimJ] = canvasInfo.dims;
+      
+      // Render target canvas (fixed paths - orange)
+      this.renderSingleMobileCanvas(
+        canvasInfo.targetCanvas,
+        canvasInfo.targetCtx,
+        dimI, dimJ,
+        playerLocal, turkeysLocal, ui, trailLocal, pathsLocal,
+        'target'
+      );
+      
+      // Render current canvas (rotating paths - cyan)
+      this.renderSingleMobileCanvas(
+        canvasInfo.currentCanvas,
+        canvasInfo.currentCtx,
+        dimI, dimJ,
+        playerLocal, turkeysLocal, ui, trailLocal, pathsLocal,
+        'current'
+      );
     });
   }
 
   /**
-   * Render a single cell in mobile view
+   * Render a single mobile canvas
    */
-  renderMobileCell(x, y, width, height, dimI, dimJ, playerLocal, turkeysLocal, ui, trailLocal, pathsLocal, mode) {
-    const ctx = this.ctx;
-    const innerPadding = 10;
-    const innerX = x + innerPadding;
-    const innerY = y + innerPadding;
-    const innerWidth = width - innerPadding * 2;
-    const innerHeight = height - innerPadding * 2;
-
-    // Draw cell background
+  renderSingleMobileCanvas(canvas, ctx, dimI, dimJ, playerLocal, turkeysLocal, ui, trailLocal, pathsLocal, mode) {
+    // Get canvas dimensions
+    const width = 200; // Base display size
+    const height = 200;
+    const padding = 10;
+    const innerWidth = width - padding * 2;
+    const innerHeight = height - padding * 2;
+    
+    // Clear canvas
     ctx.fillStyle = '#000000';
-    ctx.fillRect(x, y, width, height);
-
-    // Draw label at top
-    ctx.fillStyle = mode === 'target' ? '#ff8c00' : '#00ffff';
-    ctx.font = 'bold 14px Courier New';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText(mode === 'target' ? 'Target' : 'Current', x + width / 2, y + 5);
+    ctx.fillRect(0, 0, width, height);
 
     // Draw border
     ctx.strokeStyle = '#4a5568';
     ctx.lineWidth = 1.5;
-    ctx.strokeRect(innerX, innerY + 20, innerWidth, innerHeight - 20);
+    ctx.strokeRect(padding, padding, innerWidth, innerHeight);
 
     // Draw world-aligned fixed grid (only if showGrid is true)
     if (ui.showGrid !== false) {
-      this.drawWorldGridMobile(innerX, innerY + 20, innerWidth, innerHeight - 20, dimI, dimJ);
+      this.drawWorldGridSeparate(ctx, padding, padding, innerWidth, innerHeight, dimI, dimJ);
     }
 
     // Filter paths based on mode
@@ -421,20 +520,19 @@ export class ScatterplotMatrix {
 
     // Draw paths
     filteredPaths.forEach(pathData => {
-      this.drawPathMobile(innerX, innerY + 20, innerWidth, innerHeight - 20, pathData, dimI, dimJ);
+      this.drawPathSeparate(ctx, padding, padding, innerWidth, innerHeight, pathData, dimI, dimJ);
     });
 
     // Draw player (if enabled, typically not shown in rotation challenge)
     if (ui.showPlayer !== false) {
-      this.drawPlayerMobile(innerX, innerY + 20, innerWidth, innerHeight - 20, playerLocal, dimI, dimJ, ui);
+      this.drawPlayerSeparate(ctx, padding, padding, innerWidth, innerHeight, playerLocal, dimI, dimJ, ui);
     }
   }
 
   /**
-   * Draw world grid in mobile view cell
+   * Draw world grid in separate canvas
    */
-  drawWorldGridMobile(cellX, cellY, cellWidth, cellHeight, dimI, dimJ) {
-    const ctx = this.ctx;
+  drawWorldGridSeparate(ctx, cellX, cellY, cellWidth, cellHeight, dimI, dimJ) {
     const viewRange = this.gridRange;
 
     // Clip to the inner plotting area
@@ -447,13 +545,6 @@ export class ScatterplotMatrix {
     const P = this._playerWorld;
 
     if (!this._gridLinesWorld) this.buildWorldGridLines();
-
-    // Map local coords to pixel
-    const toPixel = (local) => {
-      const px = cellX + ((local[dimJ] / viewRange) + 1) * cellWidth / 2;
-      const py = cellY + (1 - ((local[dimI] / viewRange) + 1) / 2) * cellHeight;
-      return [px, py];
-    };
 
     // Draw every precomputed world line
     for (const line of this._gridLinesWorld) {
@@ -488,7 +579,187 @@ export class ScatterplotMatrix {
   }
 
   /**
-   * Draw path in mobile view cell
+   * Draw path in separate canvas
+   */
+  drawPathSeparate(ctx, cellX, cellY, cellWidth, cellHeight, pathData, dimI, dimJ) {
+    const viewRange = this.gridRange;
+
+    const { points, color, numbered, numDots = 6, squirrel, progress = 0, arcLengths } = pathData;
+
+    // Helper to project point to screen coordinates
+    const projectPoint = (point) => {
+      const px = cellX + (point[dimJ] / viewRange + 1) * cellWidth / 2;
+      const py = cellY + (1 - (point[dimI] / viewRange + 1) / 2) * cellHeight;
+      return [px, py];
+    };
+
+    // Rainbow mode
+    if (color === 'rainbow') {
+      ctx.save();
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const t = i / (points.length - 1);
+        const hue = t * 360;
+        ctx.strokeStyle = `hsl(${hue}, 100%, 60%)`;
+        
+        const [px1, py1] = projectPoint(points[i]);
+        const [px2, py2] = projectPoint(points[i + 1]);
+        
+        ctx.beginPath();
+        ctx.moveTo(px1, py1);
+        ctx.lineTo(px2, py2);
+        ctx.stroke();
+      }
+      ctx.restore();
+      return;
+    }
+
+    // Numbered mode
+    if (numbered) {
+      ctx.save();
+      
+      ctx.strokeStyle = color.replace('0.8', '0.3');
+      ctx.lineWidth = 1;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      ctx.beginPath();
+      let firstPoint = true;
+      for (let i = 0; i < points.length; i++) {
+        const [px, py] = projectPoint(points[i]);
+        if (firstPoint) {
+          ctx.moveTo(px, py);
+          firstPoint = false;
+        } else {
+          ctx.lineTo(px, py);
+        }
+      }
+      ctx.stroke();
+
+      for (let n = 0; n < numDots; n++) {
+        const idx = Math.floor(n * (points.length - 1) / (numDots - 1));
+        const point = points[idx];
+        const [px, py] = projectPoint(point);
+        
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(px, py, 6, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 10px Courier New';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText((n + 1).toString(), px, py);
+      }
+      
+      ctx.restore();
+      return;
+    }
+
+    // Squirrel mode
+    if (squirrel) {
+      ctx.save();
+      
+      ctx.strokeStyle = color.replace('0.8', '0.3');
+      ctx.lineWidth = 1;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      ctx.beginPath();
+      let firstPoint = true;
+      for (let i = 0; i < points.length; i++) {
+        const [px, py] = projectPoint(points[i]);
+        if (firstPoint) {
+          ctx.moveTo(px, py);
+          firstPoint = false;
+        } else {
+          ctx.lineTo(px, py);
+        }
+      }
+      ctx.stroke();
+
+      let idx;
+      if (arcLengths && arcLengths.length > 0) {
+        const totalLength = arcLengths[arcLengths.length - 1];
+        const targetLength = progress * totalLength;
+        
+        idx = 0;
+        for (let i = 0; i < arcLengths.length - 1; i++) {
+          if (arcLengths[i] <= targetLength && targetLength < arcLengths[i + 1]) {
+            idx = i;
+            break;
+          }
+        }
+        if (targetLength >= totalLength - 0.001) {
+          idx = points.length - 1;
+        }
+      } else {
+        idx = Math.floor(progress * (points.length - 1));
+      }
+      
+      const point = points[idx];
+      const [px, py] = projectPoint(point);
+      
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(px, py, 5, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      ctx.beginPath();
+      ctx.arc(px - 3, py - 4, 2, 0, 2 * Math.PI);
+      ctx.arc(px + 3, py - 4, 2, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      ctx.restore();
+      return;
+    }
+
+    // Vanilla mode
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.beginPath();
+    let firstPoint = true;
+
+    for (let i = 0; i < points.length; i++) {
+      const [px, py] = projectPoint(points[i]);
+
+      if (firstPoint) {
+        ctx.moveTo(px, py);
+        firstPoint = false;
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /**
+   * Draw player in separate canvas
+   */
+  drawPlayerSeparate(ctx, cellX, cellY, cellWidth, cellHeight, playerLocal, dimI, dimJ, ui) {
+    // Always draw at the center of the cell
+    const px = cellX + cellWidth / 2;
+    const py = cellY + cellHeight / 2;
+    
+    // Use existing drawPlayerSprite with the provided ctx
+    const originalCtx = this.ctx;
+    this.ctx = ctx;
+    this.drawPlayerSprite(px, py, dimI, dimJ, ui);
+    this.ctx = originalCtx;
+  }
+
+  /**
+   * Draw path in mobile view cell (old single-canvas method, kept for normal grid mode)
    */
   drawPathMobile(cellX, cellY, cellWidth, cellHeight, pathData, dimI, dimJ) {
     const ctx = this.ctx;
