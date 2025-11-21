@@ -42,6 +42,7 @@ export class RotationChallenge {
     // Display settings
     this.displayMode = 'vanilla'; // 'vanilla', 'rainbow', 'numbered', 'squirrel'
     this.gridEnabled = false;
+    this.mobileViewEnabled = false;
 
     // Rotation state
     this.rotationSpeed = Math.PI / 2; // rad/sec
@@ -321,6 +322,15 @@ export class RotationChallenge {
    */
   setGridEnabled(enabled) {
     this.gridEnabled = enabled;
+  }
+
+  /**
+   * Set mobile view enabled state
+   */
+  setMobileViewEnabled(enabled) {
+    this.mobileViewEnabled = enabled;
+    // Pass the setting to the scatterplot renderer
+    this.scatterplot.setMobileViewEnabled(enabled);
   }
 
   /**
