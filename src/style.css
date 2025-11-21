@@ -472,14 +472,6 @@ button:active {
   transform: scale(0.95);
 }
 
-.mobile-rotation-btn.ccw {
-  /* Counterclockwise button - specific styling if needed */
-}
-
-.mobile-rotation-btn.cw {
-  /* Clockwise button - specific styling if needed */
-}
-
 footer {
   text-align: center;
   padding: 2rem 0 1rem;

@@ -169,6 +169,13 @@ export class ScatterplotMatrix {
     
     // Add rotation controls only for current cells
     if (mode === 'current') {
+      // Shared reset function for rotation state
+      const resetRotation = () => {
+        this.isMouseDown = false;
+        this.holdDims = null;
+        this.rotationDirection = 1;
+      };
+      
       // Create rotation button container
       const rotationControls = document.createElement('div');
       rotationControls.className = 'mobile-rotation-controls';
@@ -190,16 +197,10 @@ export class ScatterplotMatrix {
       ccwButton.addEventListener('pointerup', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        this.isMouseDown = false;
-        this.holdDims = null;
-        this.rotationDirection = 1; // Reset to default
+        resetRotation();
       });
       
-      ccwButton.addEventListener('pointerleave', (e) => {
-        this.isMouseDown = false;
-        this.holdDims = null;
-        this.rotationDirection = 1;
-      });
+      ccwButton.addEventListener('pointerleave', resetRotation);
       
       // Clockwise button
       const cwButton = document.createElement('button');
@@ -218,16 +219,10 @@ export class ScatterplotMatrix {
       cwButton.addEventListener('pointerup', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        this.isMouseDown = false;
-        this.holdDims = null;
-        this.rotationDirection = 1;
+        resetRotation();
       });
       
-      cwButton.addEventListener('pointerleave', (e) => {
-        this.isMouseDown = false;
-        this.holdDims = null;
-        this.rotationDirection = 1;
-      });
+      cwButton.addEventListener('pointerleave', resetRotation);
       
       rotationControls.appendChild(ccwButton);
       rotationControls.appendChild(cwButton);
