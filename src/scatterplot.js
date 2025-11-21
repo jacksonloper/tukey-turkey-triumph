@@ -84,11 +84,11 @@ export class ScatterplotMatrix {
     // Clear existing content
     container.innerHTML = '';
 
-    // Get all off-diagonal pairs
+    // Get all off-diagonal pairs where i < j (upper triangle only)
     const pairs = [];
     for (let row = 0; row < this.dimensions; row++) {
       for (let col = 0; col < this.dimensions; col++) {
-        if (row !== col) {
+        if (row < col) {  // Only show pairs where i < j
           pairs.push([row, col]);
         }
       }
@@ -105,29 +105,23 @@ export class ScatterplotMatrix {
       const rowDiv = document.createElement('div');
       rowDiv.className = 'mobile-grid-row';
       
-      // Create label
+      // Create label (rotated 90 degrees)
       const labelDiv = document.createElement('div');
       labelDiv.className = 'mobile-grid-label';
       labelDiv.textContent = `(${row + 1}, ${col + 1})`;
       rowDiv.appendChild(labelDiv);
       
-      // Create target cell
-      const targetCell = this.createMobileCell('target', row, col, index, 'target');
-      rowDiv.appendChild(targetCell.container);
-      
-      // Create current cell
-      const currentCell = this.createMobileCell('current', row, col, index, 'current');
-      rowDiv.appendChild(currentCell.container);
+      // Create single canvas (showing overlaid target and current)
+      const cell = this.createMobileCell('combined', row, col, index, 'combined');
+      rowDiv.appendChild(cell.container);
       
       container.appendChild(rowDiv);
       
-      // Store canvas references
+      // Store canvas reference
       this.mobileCanvases.push({
         dims: [row, col],
-        targetCanvas: targetCell.canvas,
-        targetCtx: targetCell.ctx,
-        currentCanvas: currentCell.canvas,
-        currentCtx: currentCell.ctx
+        canvas: cell.canvas,
+        ctx: cell.ctx
       });
     });
   }
@@ -143,11 +137,7 @@ export class ScatterplotMatrix {
     cellDiv.style.aspectRatio = '1';
     cellDiv.style.minHeight = '150px';
     
-    // Create label
-    const labelDiv = document.createElement('div');
-    labelDiv.className = `mobile-grid-cell-label ${mode}`;
-    labelDiv.textContent = mode === 'target' ? 'Target' : 'Current';
-    cellDiv.appendChild(labelDiv);
+    // No label needed since both curves are on one canvas
     
     // Create canvas
     const canvas = document.createElement('canvas');
@@ -164,25 +154,23 @@ export class ScatterplotMatrix {
     // Scale context for DPR
     ctx.scale(dpr, dpr);
     
-    // Add click/touch handling only for current cells (for rotation)
-    if (mode === 'current') {
-      canvas.addEventListener('pointerdown', (e) => {
-        if (e.cancelable) e.preventDefault();
-        this.isMouseDown = true;
-        this.holdDims = [row, col];
-        this.clickCallbacks.forEach(cb => cb(row, col));
-      }, { passive: false });
-      
-      canvas.addEventListener('pointerup', () => {
-        this.isMouseDown = false;
-        this.holdDims = null;
-      });
-      
-      canvas.addEventListener('pointerleave', () => {
-        this.isMouseDown = false;
-        this.holdDims = null;
-      });
-    }
+    // Add click/touch handling for rotation
+    canvas.addEventListener('pointerdown', (e) => {
+      if (e.cancelable) e.preventDefault();
+      this.isMouseDown = true;
+      this.holdDims = [row, col];
+      this.clickCallbacks.forEach(cb => cb(row, col));
+    }, { passive: false });
+    
+    canvas.addEventListener('pointerup', () => {
+      this.isMouseDown = false;
+      this.holdDims = null;
+    });
+    
+    canvas.addEventListener('pointerleave', () => {
+      this.isMouseDown = false;
+      this.holdDims = null;
+    });
     
     cellDiv.appendChild(canvas);
     
@@ -436,41 +424,31 @@ export class ScatterplotMatrix {
   }
 
   /**
-   * Render mobile view: each (i,j) pair with separate canvases
+   * Render mobile view: each (i,j) pair with single canvas showing both curves
    */
   renderMobileView(playerLocal, turkeysLocal, ui, trailLocal, pathsLocal) {
     if (!this.mobileCanvases || this.mobileCanvases.length === 0) {
       return;
     }
 
-    // Render each canvas
+    // Render each canvas with both target and current curves overlaid
     this.mobileCanvases.forEach(canvasInfo => {
       const [dimI, dimJ] = canvasInfo.dims;
       
-      // Render target canvas (fixed paths - orange)
+      // Render both curves on the same canvas (like normal grid mode)
       this.renderSingleMobileCanvas(
-        canvasInfo.targetCanvas,
-        canvasInfo.targetCtx,
+        canvasInfo.canvas,
+        canvasInfo.ctx,
         dimI, dimJ,
-        playerLocal, turkeysLocal, ui, trailLocal, pathsLocal,
-        'target'
-      );
-      
-      // Render current canvas (rotating paths - cyan)
-      this.renderSingleMobileCanvas(
-        canvasInfo.currentCanvas,
-        canvasInfo.currentCtx,
-        dimI, dimJ,
-        playerLocal, turkeysLocal, ui, trailLocal, pathsLocal,
-        'current'
+        playerLocal, turkeysLocal, ui, trailLocal, pathsLocal
       );
     });
   }
 
   /**
-   * Render a single mobile canvas
+   * Render a single mobile canvas with both target and current curves
    */
-  renderSingleMobileCanvas(canvas, ctx, dimI, dimJ, playerLocal, turkeysLocal, ui, trailLocal, pathsLocal, mode) {
+  renderSingleMobileCanvas(canvas, ctx, dimI, dimJ, playerLocal, turkeysLocal, ui, trailLocal, pathsLocal) {
     // Get canvas dimensions
     const width = 200; // Base display size
     const height = 200;
@@ -492,17 +470,8 @@ export class ScatterplotMatrix {
       this.drawWorldGridSeparate(ctx, padding, padding, innerWidth, innerHeight, dimI, dimJ);
     }
 
-    // Filter paths based on mode
-    const filteredPaths = pathsLocal.filter(pathData => {
-      if (mode === 'target') {
-        return pathData.fixed; // Show only fixed (orange) paths
-      } else {
-        return !pathData.fixed; // Show only rotating (cyan) paths
-      }
-    });
-
-    // Draw paths
-    filteredPaths.forEach(pathData => {
+    // Draw all paths (both target and current, overlaid like normal grid mode)
+    pathsLocal.forEach(pathData => {
       this.drawPathSeparate(ctx, padding, padding, innerWidth, innerHeight, pathData, dimI, dimJ);
     });
 

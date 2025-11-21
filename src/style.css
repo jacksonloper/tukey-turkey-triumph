@@ -378,7 +378,7 @@ button:active {
 
 .mobile-grid-row {
   display: grid;
-  grid-template-columns: auto 1fr 1fr;
+  grid-template-columns: auto 1fr;
   gap: 12px;
   margin-bottom: 16px;
   align-items: center;
@@ -389,9 +389,10 @@ button:active {
   font-weight: 600;
   font-size: 1.1em;
   font-family: 'Courier New', monospace;
-  min-width: 60px;
-  text-align: right;
-  padding-right: 8px;
+  min-width: 30px;
+  text-align: center;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
 }
 
 .mobile-grid-cell {
