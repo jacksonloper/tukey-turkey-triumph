@@ -164,7 +164,9 @@ export class RotationChallenge {
 
       if (heldDims) {
         const [i, j] = heldDims;
-        const angle = this.rotationSpeed * dt;
+        // Get rotation direction from scatterplot (1 = CW, -1 = CCW)
+        const direction = this.scatterplot.rotationDirection || 1;
+        const angle = this.rotationSpeed * dt * direction;
         const rotStep = rotationND(this.dimensions, i, j, angle);
         // Apply rotation in current local basis: post-multiply
         this.playerOrientation = matMultN(this.playerOrientation, rotStep);

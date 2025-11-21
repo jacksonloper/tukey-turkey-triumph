@@ -432,6 +432,54 @@ button:active {
   color: #00ffff;
 }
 
+.mobile-rotation-controls {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+}
+
+.mobile-rotation-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid #00d4ff;
+  color: #00d4ff;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.mobile-rotation-btn:hover {
+  background: rgba(0, 212, 255, 0.2);
+  border-color: #00ffff;
+  transform: scale(1.05);
+}
+
+.mobile-rotation-btn:active {
+  background: rgba(0, 212, 255, 0.4);
+  transform: scale(0.95);
+}
+
+.mobile-rotation-btn.ccw {
+  /* Counterclockwise button - specific styling if needed */
+}
+
+.mobile-rotation-btn.cw {
+  /* Clockwise button - specific styling if needed */
+}
+
 footer {
   text-align: center;
   padding: 2rem 0 1rem;

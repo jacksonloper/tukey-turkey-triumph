@@ -16,6 +16,9 @@ export class ScatterplotMatrix {
 
     // Mobile view settings
     this.mobileViewEnabled = false;
+    
+    // Rotation direction for mobile controls (1 = clockwise, -1 = counterclockwise)
+    this.rotationDirection = 1;
 
     // World-grid rendering settings (cardinal basis)
     this.gridSpacing = 2.0; // world units between grid lines (half as many)
@@ -164,24 +167,71 @@ export class ScatterplotMatrix {
     // Scale context for DPR
     ctx.scale(dpr, dpr);
     
-    // Add click/touch handling only for current cells (for rotation)
+    // Add rotation controls only for current cells
     if (mode === 'current') {
-      canvas.addEventListener('pointerdown', (e) => {
-        if (e.cancelable) e.preventDefault();
+      // Create rotation button container
+      const rotationControls = document.createElement('div');
+      rotationControls.className = 'mobile-rotation-controls';
+      
+      // Counterclockwise button
+      const ccwButton = document.createElement('button');
+      ccwButton.className = 'mobile-rotation-btn ccw';
+      ccwButton.innerHTML = '↺';
+      ccwButton.title = 'Rotate counterclockwise';
+      ccwButton.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         this.isMouseDown = true;
         this.holdDims = [row, col];
+        this.rotationDirection = -1; // Counterclockwise
         this.clickCallbacks.forEach(cb => cb(row, col));
       }, { passive: false });
       
-      canvas.addEventListener('pointerup', () => {
+      ccwButton.addEventListener('pointerup', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         this.isMouseDown = false;
         this.holdDims = null;
+        this.rotationDirection = 1; // Reset to default
       });
       
-      canvas.addEventListener('pointerleave', () => {
+      ccwButton.addEventListener('pointerleave', (e) => {
         this.isMouseDown = false;
         this.holdDims = null;
+        this.rotationDirection = 1;
       });
+      
+      // Clockwise button
+      const cwButton = document.createElement('button');
+      cwButton.className = 'mobile-rotation-btn cw';
+      cwButton.innerHTML = '↻';
+      cwButton.title = 'Rotate clockwise';
+      cwButton.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.isMouseDown = true;
+        this.holdDims = [row, col];
+        this.rotationDirection = 1; // Clockwise
+        this.clickCallbacks.forEach(cb => cb(row, col));
+      }, { passive: false });
+      
+      cwButton.addEventListener('pointerup', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.isMouseDown = false;
+        this.holdDims = null;
+        this.rotationDirection = 1;
+      });
+      
+      cwButton.addEventListener('pointerleave', (e) => {
+        this.isMouseDown = false;
+        this.holdDims = null;
+        this.rotationDirection = 1;
+      });
+      
+      rotationControls.appendChild(ccwButton);
+      rotationControls.appendChild(cwButton);
+      cellDiv.appendChild(rotationControls);
     }
     
     cellDiv.appendChild(canvas);
