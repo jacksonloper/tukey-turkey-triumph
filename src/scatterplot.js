@@ -112,11 +112,11 @@ export class ScatterplotMatrix {
       rowDiv.appendChild(labelDiv);
       
       // Create target cell (left - shows orange fixed curve)
-      const targetCell = this.createMobileCell(row, col, index, 'target');
+      const targetCell = this.createMobileCell(row, col, 'target');
       rowDiv.appendChild(targetCell.container);
       
       // Create current cell (right - shows cyan rotating curve)
-      const currentCell = this.createMobileCell(row, col, index, 'current');
+      const currentCell = this.createMobileCell(row, col, 'current');
       rowDiv.appendChild(currentCell.container);
       
       container.appendChild(rowDiv);
@@ -135,7 +135,7 @@ export class ScatterplotMatrix {
   /**
    * Create a mobile cell with its own canvas
    */
-  createMobileCell(row, col, index, mode) {
+  createMobileCell(row, col, mode) {
     const cellDiv = document.createElement('div');
     cellDiv.className = 'mobile-grid-cell';
     
