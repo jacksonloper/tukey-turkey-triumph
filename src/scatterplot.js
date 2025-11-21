@@ -16,8 +16,6 @@ export class ScatterplotMatrix {
 
     // Mobile view settings
     this.mobileViewEnabled = false;
-    this.mobileRowHeight = 200; // Height of each row in mobile view
-    this.mobileCellWidth = 0; // Width of each plot in mobile view (half of available width)
 
     // World-grid rendering settings (cardinal basis)
     this.gridSpacing = 2.0; // world units between grid lines (half as many)
@@ -263,45 +261,30 @@ export class ScatterplotMatrix {
   }
 
   getCellFromMouse(e) {
+    // Mobile view uses separate canvases with their own event handlers
+    // This method is only used for normal grid mode
+    if (this.mobileViewEnabled) {
+      return null;
+    }
+
     const rect = this.canvas.getBoundingClientRect();
     // Convert from screen coordinates to canvas display coordinates
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    if (this.mobileViewEnabled) {
-      // In mobile view, determine which row was clicked
-      const rowIndex = Math.floor((y - this.padding) / this.mobileRowHeight);
-      
-      // Get all off-diagonal pairs
-      const pairs = [];
-      for (let row = 0; row < this.dimensions; row++) {
-        for (let col = 0; col < this.dimensions; col++) {
-          if (row !== col) {
-            pairs.push([row, col]);
-          }
-        }
-      }
-      
-      if (rowIndex >= 0 && rowIndex < pairs.length) {
-        const [row, col] = pairs[rowIndex];
+    // Normal grid mode
+    // Determine which cell was clicked (using display size, not internal canvas size)
+    const col = Math.floor((x - this.padding) / this.cellSize);
+    const row = Math.floor((y - this.padding) / this.cellSize);
+
+    if (col >= 0 && col < this.dimensions && row >= 0 && row < this.dimensions) {
+      if (row === col) {
+        return { diagonal: true, dim: row };
+      } else {
         return { diagonal: false, dims: [row, col] };
       }
-      return null;
-    } else {
-      // Normal grid mode
-      // Determine which cell was clicked (using display size, not internal canvas size)
-      const col = Math.floor((x - this.padding) / this.cellSize);
-      const row = Math.floor((y - this.padding) / this.cellSize);
-
-      if (col >= 0 && col < this.dimensions && row >= 0 && row < this.dimensions) {
-        if (row === col) {
-          return { diagonal: true, dim: row };
-        } else {
-          return { diagonal: false, dims: [row, col] };
-        }
-      }
-      return null;
     }
+    return null;
   }
 
   handlePointerDown(e) {
@@ -574,6 +557,34 @@ export class ScatterplotMatrix {
       ctx.lineTo(px2, py2);
       ctx.stroke();
     }
+
+    // Emphasize world boundary of the fixed box at +/- viewRange along both dims
+    const drawBoundaryLine = (fixDim, fixVal, varyDim) => {
+      const a = new Array(this.dimensions).fill(0);
+      const b = new Array(this.dimensions).fill(0);
+      a[fixDim] = fixVal;
+      b[fixDim] = fixVal;
+      a[varyDim] = -viewRange;
+      b[varyDim] = +viewRange;
+      const la = matVecMultN(Rinv, a.map((v, i) => v - P[i]));
+      const lb = matVecMultN(Rinv, b.map((v, i) => v - P[i]));
+      // Map using the cell axes: x uses dimJ, y uses dimI
+      const x1 = cellX + ((la[dimJ] / viewRange) + 1) * cellWidth / 2;
+      const y1 = cellY + (1 - ((la[dimI] / viewRange) + 1) / 2) * cellHeight;
+      const x2 = cellX + ((lb[dimJ] / viewRange) + 1) * cellWidth / 2;
+      const y2 = cellY + (1 - ((lb[dimI] / viewRange) + 1) / 2) * cellHeight;
+      ctx.strokeStyle = this.gridBoundaryColor;
+      ctx.lineWidth = this.gridBoundaryLineWidth;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    };
+
+    drawBoundaryLine(dimI, -viewRange, dimJ);
+    drawBoundaryLine(dimI, +viewRange, dimJ);
+    drawBoundaryLine(dimJ, -viewRange, dimI);
+    drawBoundaryLine(dimJ, +viewRange, dimI);
 
     ctx.restore();
   }
