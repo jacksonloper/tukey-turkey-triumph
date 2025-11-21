@@ -111,11 +111,11 @@ export class ScatterplotMatrix {
       // Create target cell (left - shows orange fixed curve)
       const targetCell = this.createMobileCell(row, col, 'target');
       
-      // Add label to target cell (positioned above canvas)
-      const labelDiv = document.createElement('div');
-      labelDiv.className = 'mobile-grid-label';
-      labelDiv.textContent = `(${row + 1}, ${col + 1})`;
-      targetCell.container.appendChild(labelDiv);
+      // Add (i,j) label to target cell (after canvas, at bottom)
+      const coordLabelDiv = document.createElement('div');
+      coordLabelDiv.className = 'mobile-grid-label';
+      coordLabelDiv.textContent = `(${row + 1}, ${col + 1})`;
+      targetCell.container.appendChild(coordLabelDiv);
       
       rowDiv.appendChild(targetCell.container);
       

@@ -385,23 +385,19 @@ button:active {
 }
 
 .mobile-grid-label {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
   color: #e6f3ff;
   font-weight: 600;
   font-size: 1.1em;
   font-family: 'Courier New', monospace;
   text-align: center;
-  z-index: 10;
   background: rgba(0, 0, 0, 0.6);
-  padding: 2px 8px;
+  padding: 6px 12px;
   border-radius: 4px;
+  border-top: 1px solid #4a5568;
+  white-space: nowrap;
 }
 
 .mobile-grid-cell {
-  position: relative;
   display: flex;
   flex-direction: column;
   border: 2px solid #4a5568;
