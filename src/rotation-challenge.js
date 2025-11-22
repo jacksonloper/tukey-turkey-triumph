@@ -60,10 +60,11 @@ export class RotationChallenge {
     this.winThreshold = 0.1; // Distance threshold for winning (close to 0)
     this.hasWon = false;
     
-    // Auto-halving settings
-    this.autoHalvingThreshold = 0.5; // Start auto-halving when distance < 0.5
-    this.autoHalvingTarget = 0.01; // Stop when distance < 0.01
-    this.isAutoHalving = false;
+    // Auto-lock settings (off by default as per requirement)
+    this.autoLockEnabled = false;
+    this.autoLockThreshold = 0.5; // Threshold when auto-lock triggers
+    this.hasTriggeredAutoLock = false; // Track if we've triggered auto-lock this cycle
+    this.lastDistanceAboveReset = Infinity; // Track if distance went above 1.0 to reset
 
     // Halfway animation state
     this.isAnimatingHalfway = false;
@@ -195,11 +196,6 @@ export class RotationChallenge {
         this.playerOrientation = this.halfwayTargetOrientation;
         this.isAnimatingHalfway = false;
         this.halfwayProgress = 0;
-        
-        // If we were auto-halving, check if we need to continue
-        if (this.isAutoHalving) {
-          // Will be checked in the next update cycle after updateDistance()
-        }
       } else {
         // Smooth interpolation using ease-in-out
         const t = this.easeInOutCubic(this.halfwayProgress);
@@ -228,20 +224,26 @@ export class RotationChallenge {
     // Compute current rotation distance
     this.updateDistance();
     
-    // Check for auto-halving condition
-    if (!this.isAnimatingHalfway && 
-        this.currentDistance < this.autoHalvingThreshold && 
-        this.currentDistance > this.autoHalvingTarget) {
-      if (!this.isAutoHalving) {
-        // Start new auto-halving sequence
-        this.startAutoHalving();
-      } else {
-        // Continue auto-halving
-        this.startAutoHalving();
+    // Check for auto-lock condition
+    // Auto-lock: move 99% of the way toward target when distance falls below threshold
+    // Only trigger once per cycle (until distance exceeds 1.0 and falls below threshold again)
+    if (this.autoLockEnabled && !this.isAnimatingHalfway) {
+      // Reset the trigger if distance went above 1.0
+      if (this.currentDistance > 1.0) {
+        this.lastDistanceAboveReset = this.currentDistance;
+        this.hasTriggeredAutoLock = false;
       }
-    } else if (this.isAutoHalving && this.currentDistance <= this.autoHalvingTarget) {
-      // Auto-halving complete
-      this.isAutoHalving = false;
+      
+      // Trigger auto-lock if:
+      // 1. We haven't triggered it yet this cycle
+      // 2. Distance is below threshold
+      // 3. We've seen distance above 1.0 since last trigger (or this is first time)
+      if (!this.hasTriggeredAutoLock && 
+          this.currentDistance < this.autoLockThreshold &&
+          this.lastDistanceAboveReset > 1.0) {
+        this.startAutoLock();
+        this.hasTriggeredAutoLock = true;
+      }
     }
 
     // Check win condition (distance below threshold)
@@ -336,7 +338,7 @@ export class RotationChallenge {
       showPlayer: false,
       showGrid: this.gridEnabled,
       paths: pathsToRender,
-      gradients: this.showGradientWidget && this.mobileViewEnabled ? this.computeGradients() : null
+      gradients: this.showGradientWidget ? this.computeGradients() : null
     });
   }
 
@@ -389,22 +391,20 @@ export class RotationChallenge {
   }
 
   /**
-   * Start auto-halving animation to bring distance closer to target
+   * Auto-lock: Move 99% of the way toward the target rotation
+   * Uses single animation like Auto-Rotate button
    */
-  startAutoHalving() {
-    if (this.isAnimatingHalfway || this.isAutoHalving) return;
+  startAutoLock() {
+    if (this.isAnimatingHalfway) return;
     
-    // Mark that we're in auto-halving mode
-    this.isAutoHalving = true;
-    
-    // Interpolate halfway toward target
+    // Interpolate 99% toward target (0.99 = 99%)
     const targetOrientation = geodesicInterpArray(
       this.playerOrientation,
       this.targetRotation,
-      0.5
+      0.99
     );
 
-    // Start animation
+    // Start animation using same mechanism as Auto-Rotate
     this.isAnimatingHalfway = true;
     this.halfwayProgress = 0;
     this.halfwayStartOrientation = this.playerOrientation;
@@ -472,10 +472,20 @@ export class RotationChallenge {
   }
 
   /**
-   * Set auto-halving threshold
+   * Set auto-lock enabled state
    */
-  setAutoHalvingThreshold(threshold) {
-    this.autoHalvingThreshold = threshold;
+  setAutoLockEnabled(enabled) {
+    this.autoLockEnabled = enabled;
+    // Reset trigger state when enabling/disabling
+    this.hasTriggeredAutoLock = false;
+    this.lastDistanceAboveReset = Infinity;
+  }
+
+  /**
+   * Set auto-lock threshold
+   */
+  setAutoLockThreshold(threshold) {
+    this.autoLockThreshold = threshold;
   }
 
   /**

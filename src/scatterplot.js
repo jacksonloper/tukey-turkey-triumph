@@ -1144,6 +1144,11 @@ export class ScatterplotMatrix {
       this.drawPlayer(x, y, playerLocal, row, col, ui);
     }
 
+    // Draw gradient overlay (for rotation challenge)
+    if (ui.gradients && ui.gradients.length > 0 && row !== col) {
+      this.drawGradientOverlayGrid(ctx, x, y, this.cellSize, this.cellSize, row, col, ui.gradients);
+    }
+
     // Draw thrust/torque puffs
     this.drawPuffs(x, y, row, col, ui);
   }
@@ -1840,6 +1845,62 @@ export class ScatterplotMatrix {
     const barX = textX - barWidth;
     const barY = textY + 20;
     const barHeight = 3;
+    
+    ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+    
+    ctx.restore();
+  }
+
+  /**
+   * Draw gradient overlay for grid view cells
+   * Similar to drawGradientOverlay but positioned for the standard grid
+   */
+  drawGradientOverlayGrid(ctx, cellX, cellY, cellWidth, cellHeight, dimI, dimJ, gradients) {
+    // Find the gradient for this specific plane
+    const gradientInfo = gradients.find(g => {
+      return (g.plane[0] === dimI && g.plane[1] === dimJ) ||
+             (g.plane[0] === dimJ && g.plane[1] === dimI);
+    });
+    
+    if (!gradientInfo) return;
+    
+    // Determine direction based on gradient sign
+    // Negative gradient means rotating in the positive direction decreases distance
+    const direction = gradientInfo.gradient < 0 ? 'CW' : 'CCW';
+    const arrow = gradientInfo.gradient < 0 ? '↻' : '↺';
+    
+    // Normalize by max absolute gradient for relative magnitude
+    const maxAbsGrad = Math.max(...gradients.map(g => g.absGradient));
+    const normalizedMagnitude = maxAbsGrad > 0 ? gradientInfo.absGradient / maxAbsGrad : 0;
+    
+    // Skip if magnitude is very small
+    if (normalizedMagnitude < 0.05) return;
+    
+    // Draw semi-transparent overlay
+    ctx.save();
+    
+    // Position text in upper right corner of cell
+    const padding = 5;
+    const textX = cellX + cellWidth - padding;
+    const textY = cellY + padding + 10;
+    
+    // Set style based on magnitude
+    const alpha = 0.5 + normalizedMagnitude * 0.5; // 0.5 to 1.0
+    ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`; // Gold color
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    
+    // Draw direction arrow and label
+    const text = `${arrow} ${direction}`;
+    ctx.fillText(text, textX, textY);
+    
+    // Draw magnitude bar below
+    const barWidth = 25 * normalizedMagnitude;
+    const barX = textX - barWidth;
+    const barY = textY + 16;
+    const barHeight = 2.5;
     
     ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
     ctx.fillRect(barX, barY, barWidth, barHeight);

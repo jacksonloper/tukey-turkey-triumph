@@ -17,6 +17,9 @@ function init() {
   const mobileOverlayToggle = document.getElementById('mobile-overlay-toggle');
   const gradientWidgetToggle = document.getElementById('gradient-widget-toggle');
   const distanceInfoToggle = document.getElementById('distance-info-toggle');
+  const autoLockToggle = document.getElementById('auto-lock-toggle');
+  const autoLockThresholdInput = document.getElementById('auto-lock-threshold-input');
+  const autoLockThresholdContainer = document.querySelector('.auto-lock-threshold');
   const subtitle = document.getElementById('subtitle');
   const scrollHint = document.getElementById('scroll-hint');
 
@@ -31,6 +34,8 @@ function init() {
   challenge.setMobileOverlayEnabled(mobileOverlayToggle.checked);
   challenge.setGradientWidgetEnabled(gradientWidgetToggle.checked);
   challenge.setShowDistanceInfo(distanceInfoToggle.checked);
+  challenge.setAutoLockEnabled(autoLockToggle.checked);
+  challenge.setAutoLockThreshold(parseFloat(autoLockThresholdInput.value));
 
   // Update subtitle to reflect current dimension
   function updateSubtitle(dim) {
@@ -67,6 +72,8 @@ function init() {
       challenge.setMobileOverlayEnabled(mobileOverlayToggle.checked);
       challenge.setGradientWidgetEnabled(gradientWidgetToggle.checked);
       challenge.setShowDistanceInfo(distanceInfoToggle.checked);
+      challenge.setAutoLockEnabled(autoLockToggle.checked);
+      challenge.setAutoLockThreshold(parseFloat(autoLockThresholdInput.value));
 
       // Update subtitle
       updateSubtitle(currentDimensions);
@@ -104,6 +111,25 @@ function init() {
   // Distance info toggle wiring
   distanceInfoToggle.addEventListener('change', () => {
     challenge.setShowDistanceInfo(distanceInfoToggle.checked);
+  });
+
+  // Auto-lock toggle wiring
+  autoLockToggle.addEventListener('change', () => {
+    challenge.setAutoLockEnabled(autoLockToggle.checked);
+    // Show/hide threshold input
+    if (autoLockToggle.checked) {
+      autoLockThresholdContainer.style.display = 'flex';
+    } else {
+      autoLockThresholdContainer.style.display = 'none';
+    }
+  });
+
+  // Auto-lock threshold input wiring
+  autoLockThresholdInput.addEventListener('change', () => {
+    const threshold = parseFloat(autoLockThresholdInput.value);
+    if (!isNaN(threshold) && threshold > 0) {
+      challenge.setAutoLockThreshold(threshold);
+    }
   });
 
   // Hide scroll hint only when at least half of the canvas is visible
