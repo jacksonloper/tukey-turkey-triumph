@@ -15,6 +15,8 @@ function init() {
   const gridToggle = document.getElementById('grid-toggle');
   const mobileViewToggle = document.getElementById('mobile-view-toggle');
   const mobileOverlayToggle = document.getElementById('mobile-overlay-toggle');
+  const gradientWidgetToggle = document.getElementById('gradient-widget-toggle');
+  const distanceInfoToggle = document.getElementById('distance-info-toggle');
   const subtitle = document.getElementById('subtitle');
   const scrollHint = document.getElementById('scroll-hint');
 
@@ -27,6 +29,8 @@ function init() {
   challenge.setGridEnabled(gridToggle.checked);
   challenge.setMobileViewEnabled(mobileViewToggle.checked);
   challenge.setMobileOverlayEnabled(mobileOverlayToggle.checked);
+  challenge.setGradientWidgetEnabled(gradientWidgetToggle.checked);
+  challenge.setShowDistanceInfo(distanceInfoToggle.checked);
 
   // Update subtitle to reflect current dimension
   function updateSubtitle(dim) {
@@ -61,6 +65,8 @@ function init() {
       challenge.setGridEnabled(gridToggle.checked);
       challenge.setMobileViewEnabled(mobileViewToggle.checked);
       challenge.setMobileOverlayEnabled(mobileOverlayToggle.checked);
+      challenge.setGradientWidgetEnabled(gradientWidgetToggle.checked);
+      challenge.setShowDistanceInfo(distanceInfoToggle.checked);
 
       // Update subtitle
       updateSubtitle(currentDimensions);
@@ -88,6 +94,16 @@ function init() {
   // Mobile overlay toggle wiring
   mobileOverlayToggle.addEventListener('change', () => {
     challenge.setMobileOverlayEnabled(mobileOverlayToggle.checked);
+  });
+
+  // Gradient widget toggle wiring
+  gradientWidgetToggle.addEventListener('change', () => {
+    challenge.setGradientWidgetEnabled(gradientWidgetToggle.checked);
+  });
+
+  // Distance info toggle wiring
+  distanceInfoToggle.addEventListener('change', () => {
+    challenge.setShowDistanceInfo(distanceInfoToggle.checked);
   });
 
   // Hide scroll hint only when at least half of the canvas is visible

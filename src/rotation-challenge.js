@@ -11,7 +11,8 @@ import {
   rotationDistanceSO,
   interpRotationSO,
   geodesicInterpArray,
-  geodesicDistanceArray
+  geodesicDistanceArray,
+  dGeodesicAtZeroArray
 } from './math4d.js';
 import { ScatterplotMatrix } from './scatterplot.js';
 import {
@@ -46,6 +47,8 @@ export class RotationChallenge {
     this.gridEnabled = false;
     this.mobileViewEnabled = false;
     this.mobileOverlayEnabled = false;
+    this.showGradientWidget = false;
+    this.showDistanceInfo = false; // Off by default as per requirement
 
     // Rotation state
     this.rotationSpeed = Math.PI / 2; // rad/sec
@@ -56,6 +59,11 @@ export class RotationChallenge {
     this.bestDistance = Infinity;
     this.winThreshold = 0.1; // Distance threshold for winning (close to 0)
     this.hasWon = false;
+    
+    // Auto-halving settings
+    this.autoHalvingThreshold = 0.5; // Start auto-halving when distance < 0.5
+    this.autoHalvingTarget = 0.01; // Stop when distance < 0.01
+    this.isAutoHalving = false;
 
     // Halfway animation state
     this.isAnimatingHalfway = false;
@@ -97,6 +105,44 @@ export class RotationChallenge {
       }
     }
     return planes;
+  }
+
+  /**
+   * Create a skew-symmetric generator matrix for plane (i, j)
+   * K[i][j] = -1, K[j][i] = +1, all other entries = 0
+   */
+  createGeneratorMatrix(i, j) {
+    const K = identityNxN(this.dimensions);
+    for (let row = 0; row < this.dimensions; row++) {
+      for (let col = 0; col < this.dimensions; col++) {
+        K[row][col] = 0;
+      }
+    }
+    K[i][j] = -1;
+    K[j][i] = 1;
+    return K;
+  }
+
+  /**
+   * Compute gradient of geodesic distance w.r.t each rotation plane
+   * Returns array of {plane: [i,j], gradient: number, absGradient: number}
+   */
+  computeGradients() {
+    const gradients = [];
+    for (const [i, j] of this.rotationPlanes) {
+      const K = this.createGeneratorMatrix(i, j);
+      const grad = dGeodesicAtZeroArray(
+        this.playerOrientation,
+        this.targetRotation,
+        K
+      );
+      gradients.push({
+        plane: [i, j],
+        gradient: grad,
+        absGradient: Math.abs(grad)
+      });
+    }
+    return gradients;
   }
 
   /**
@@ -159,8 +205,8 @@ export class RotationChallenge {
           t
         );
       }
-    } else {
-      // Check for continuous rotation (only when not animating)
+    } else if (!this.isAutoHalving) {
+      // Check for continuous rotation (only when not animating and not auto-halving)
       const heldDims = this.scatterplot.checkContinuousRotation();
 
       if (heldDims) {
@@ -176,6 +222,13 @@ export class RotationChallenge {
 
     // Compute current rotation distance
     this.updateDistance();
+    
+    // Check for auto-halving condition
+    if (!this.isAnimatingHalfway && !this.isAutoHalving && 
+        this.currentDistance < this.autoHalvingThreshold && 
+        this.currentDistance > this.autoHalvingTarget) {
+      this.startAutoHalving();
+    }
 
     // Check win condition (distance below threshold)
     if (!this.hasWon && this.currentDistance <= this.winThreshold) {
@@ -268,7 +321,8 @@ export class RotationChallenge {
     this.scatterplot.render(player, [], {
       showPlayer: false,
       showGrid: this.gridEnabled,
-      paths: pathsToRender
+      paths: pathsToRender,
+      gradients: this.showGradientWidget && this.mobileViewEnabled ? this.computeGradients() : null
     });
   }
 
@@ -276,16 +330,25 @@ export class RotationChallenge {
    * Update UI elements
    */
   updateUI() {
+    // Update distance display based on showDistanceInfo setting
     if (this.alignmentScoreEl) {
-      this.alignmentScoreEl.textContent = this.currentDistance === Infinity
-        ? '—'
-        : this.currentDistance.toFixed(3);
+      if (this.showDistanceInfo) {
+        this.alignmentScoreEl.textContent = this.currentDistance === Infinity
+          ? '—'
+          : this.currentDistance.toFixed(3);
+      } else {
+        this.alignmentScoreEl.textContent = '—';
+      }
     }
 
     if (this.bestScoreEl) {
-      this.bestScoreEl.textContent = this.bestDistance === Infinity
-        ? '—'
-        : this.bestDistance.toFixed(3);
+      if (this.showDistanceInfo) {
+        this.bestScoreEl.textContent = this.bestDistance === Infinity
+          ? '—'
+          : this.bestDistance.toFixed(3);
+      } else {
+        this.bestScoreEl.textContent = '—';
+      }
     }
   }
 
@@ -309,6 +372,47 @@ export class RotationChallenge {
     this.halfwayProgress = 0;
     this.halfwayStartOrientation = this.playerOrientation;
     this.halfwayTargetOrientation = targetOrientation;
+  }
+
+  /**
+   * Start auto-halving animation to bring distance closer to target
+   */
+  startAutoHalving() {
+    if (this.isAnimatingHalfway || this.isAutoHalving) return;
+    
+    // Mark that we're in auto-halving mode
+    this.isAutoHalving = true;
+    
+    // Interpolate halfway toward target
+    const targetOrientation = geodesicInterpArray(
+      this.playerOrientation,
+      this.targetRotation,
+      0.5
+    );
+
+    // Start animation
+    this.isAnimatingHalfway = true;
+    this.halfwayProgress = 0;
+    this.halfwayStartOrientation = this.playerOrientation;
+    this.halfwayTargetOrientation = targetOrientation;
+    
+    // Set up a callback to check if we need to continue halving
+    const checkContinueHalving = () => {
+      if (!this.isAnimatingHalfway && this.isAutoHalving) {
+        // Animation finished, check if we need to continue
+        if (this.currentDistance > this.autoHalvingTarget) {
+          // Continue halving
+          this.startAutoHalving();
+        } else {
+          // We're done
+          this.isAutoHalving = false;
+        }
+      } else if (this.isAnimatingHalfway) {
+        // Still animating, check again soon
+        requestAnimationFrame(checkContinueHalving);
+      }
+    };
+    requestAnimationFrame(checkContinueHalving);
   }
 
   /**
@@ -348,6 +452,34 @@ export class RotationChallenge {
     this.mobileOverlayEnabled = enabled;
     // Pass the setting to the scatterplot renderer
     this.scatterplot.setMobileOverlayEnabled(enabled);
+  }
+
+  /**
+   * Set gradient widget enabled state
+   */
+  setGradientWidgetEnabled(enabled) {
+    this.showGradientWidget = enabled;
+    // Pass gradients to scatterplot if enabled
+    if (enabled && this.mobileViewEnabled) {
+      this.scatterplot.setGradientData(this.computeGradients());
+    } else {
+      this.scatterplot.setGradientData(null);
+    }
+  }
+
+  /**
+   * Set distance info display state
+   */
+  setShowDistanceInfo(enabled) {
+    this.showDistanceInfo = enabled;
+    this.updateUI();
+  }
+
+  /**
+   * Set auto-halving threshold
+   */
+  setAutoHalvingThreshold(threshold) {
+    this.autoHalvingThreshold = threshold;
   }
 
   /**

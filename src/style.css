@@ -389,6 +389,46 @@ button:active {
   cursor: pointer;
 }
 
+.gradient-widget-toggle {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  color: #e6f3ff;
+  font-size: 0.95em;
+  margin-top: 0.5rem;
+}
+.gradient-widget-toggle label {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  cursor: pointer;
+}
+.gradient-widget-toggle input[type="checkbox"] {
+  accent-color: #646cff;
+  cursor: pointer;
+}
+
+.distance-info-toggle {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  color: #e6f3ff;
+  font-size: 0.95em;
+  margin-top: 0.5rem;
+}
+.distance-info-toggle label {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  cursor: pointer;
+}
+.distance-info-toggle input[type="checkbox"] {
+  accent-color: #646cff;
+  cursor: pointer;
+}
+
 /* Mobile grid container */
 .mobile-grid-container {
   width: 100%;

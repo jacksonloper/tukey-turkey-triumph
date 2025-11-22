@@ -83,6 +83,10 @@ export class ScatterplotMatrix {
     // No need to recreate grid, just re-render with new setting
   }
 
+  setGradientData(gradients) {
+    this.gradientData = gradients;
+  }
+
   /**
    * Set up the mobile grid with separate canvases
    */
@@ -573,6 +577,11 @@ export class ScatterplotMatrix {
     // Draw player (if enabled, typically not shown in rotation challenge)
     if (ui.showPlayer !== false) {
       this.drawPlayerSeparate(ctx, padding, padding, innerWidth, innerHeight, playerLocal, dimI, dimJ, ui);
+    }
+    
+    // Draw gradient overlay (only in current mode when gradients are available)
+    if (mode === 'current' && ui.gradients && ui.gradients.length > 0) {
+      this.drawGradientOverlay(ctx, padding, padding, innerWidth, innerHeight, dimI, dimJ, ui.gradients);
     }
   }
 
@@ -1781,5 +1790,60 @@ export class ScatterplotMatrix {
       ctx.fillText(`Dim ${i + 1}`, 0, 0);
       ctx.restore();
     }
+  }
+
+  /**
+   * Draw gradient overlay showing rotation direction hints
+   * Displays an arrow and text indicating whether to rotate CW or CCW
+   */
+  drawGradientOverlay(ctx, cellX, cellY, cellWidth, cellHeight, dimI, dimJ, gradients) {
+    // Find the gradient for this specific plane
+    const gradientInfo = gradients.find(g => {
+      return (g.plane[0] === dimI && g.plane[1] === dimJ) ||
+             (g.plane[0] === dimJ && g.plane[1] === dimI);
+    });
+    
+    if (!gradientInfo) return;
+    
+    // Determine direction based on gradient sign
+    // Negative gradient means rotating in the positive direction decreases distance
+    const direction = gradientInfo.gradient < 0 ? 'CW' : 'CCW';
+    const arrow = gradientInfo.gradient < 0 ? '↻' : '↺';
+    
+    // Normalize by max absolute gradient for relative magnitude
+    const maxAbsGrad = Math.max(...gradients.map(g => g.absGradient));
+    const normalizedMagnitude = maxAbsGrad > 0 ? gradientInfo.absGradient / maxAbsGrad : 0;
+    
+    // Skip if magnitude is very small
+    if (normalizedMagnitude < 0.05) return;
+    
+    // Draw semi-transparent overlay
+    ctx.save();
+    
+    // Position text in upper right corner of cell
+    const textX = cellX + cellWidth - 5;
+    const textY = cellY + 15;
+    
+    // Set style based on magnitude
+    const alpha = 0.5 + normalizedMagnitude * 0.5; // 0.5 to 1.0
+    ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`; // Gold color
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    
+    // Draw direction arrow and label
+    const text = `${arrow} ${direction}`;
+    ctx.fillText(text, textX, textY);
+    
+    // Draw magnitude bar below
+    const barWidth = 30 * normalizedMagnitude;
+    const barX = textX - barWidth;
+    const barY = textY + 20;
+    const barHeight = 3;
+    
+    ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+    
+    ctx.restore();
   }
 }
