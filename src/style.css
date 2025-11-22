@@ -389,6 +389,84 @@ button:active {
   cursor: pointer;
 }
 
+.gradient-widget-toggle {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  color: #e6f3ff;
+  font-size: 0.95em;
+  margin-top: 0.5rem;
+}
+.gradient-widget-toggle label {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  cursor: pointer;
+}
+.gradient-widget-toggle input[type="checkbox"] {
+  accent-color: #646cff;
+  cursor: pointer;
+}
+
+.distance-info-toggle {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  color: #e6f3ff;
+  font-size: 0.95em;
+  margin-top: 0.5rem;
+}
+.distance-info-toggle label {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  cursor: pointer;
+}
+.distance-info-toggle input[type="checkbox"] {
+  accent-color: #646cff;
+  cursor: pointer;
+}
+
+.auto-lock-toggle {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  color: #e6f3ff;
+  font-size: 0.95em;
+  margin-top: 0.5rem;
+}
+.auto-lock-toggle label {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  cursor: pointer;
+}
+.auto-lock-toggle input[type="checkbox"] {
+  accent-color: #646cff;
+  cursor: pointer;
+}
+
+.auto-lock-threshold {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  color: #b8c5d6;
+  font-size: 0.85em;
+  margin-top: 0.25rem;
+}
+.auto-lock-threshold input[type="number"] {
+  background: #1a1a2e;
+  border: 1px solid #4a5568;
+  color: #e6f3ff;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
 /* Mobile grid container */
 .mobile-grid-container {
   width: 100%;
