@@ -195,6 +195,11 @@ export class RotationChallenge {
         this.playerOrientation = this.halfwayTargetOrientation;
         this.isAnimatingHalfway = false;
         this.halfwayProgress = 0;
+        
+        // If we were auto-halving, check if we need to continue
+        if (this.isAutoHalving) {
+          // Will be checked in the next update cycle after updateDistance()
+        }
       } else {
         // Smooth interpolation using ease-in-out
         const t = this.easeInOutCubic(this.halfwayProgress);
@@ -224,10 +229,19 @@ export class RotationChallenge {
     this.updateDistance();
     
     // Check for auto-halving condition
-    if (!this.isAnimatingHalfway && !this.isAutoHalving && 
+    if (!this.isAnimatingHalfway && 
         this.currentDistance < this.autoHalvingThreshold && 
         this.currentDistance > this.autoHalvingTarget) {
-      this.startAutoHalving();
+      if (!this.isAutoHalving) {
+        // Start new auto-halving sequence
+        this.startAutoHalving();
+      } else {
+        // Continue auto-halving
+        this.startAutoHalving();
+      }
+    } else if (this.isAutoHalving && this.currentDistance <= this.autoHalvingTarget) {
+      // Auto-halving complete
+      this.isAutoHalving = false;
     }
 
     // Check win condition (distance below threshold)
@@ -395,24 +409,6 @@ export class RotationChallenge {
     this.halfwayProgress = 0;
     this.halfwayStartOrientation = this.playerOrientation;
     this.halfwayTargetOrientation = targetOrientation;
-    
-    // Set up a callback to check if we need to continue halving
-    const checkContinueHalving = () => {
-      if (!this.isAnimatingHalfway && this.isAutoHalving) {
-        // Animation finished, check if we need to continue
-        if (this.currentDistance > this.autoHalvingTarget) {
-          // Continue halving
-          this.startAutoHalving();
-        } else {
-          // We're done
-          this.isAutoHalving = false;
-        }
-      } else if (this.isAnimatingHalfway) {
-        // Still animating, check again soon
-        requestAnimationFrame(checkContinueHalving);
-      }
-    };
-    requestAnimationFrame(checkContinueHalving);
   }
 
   /**
