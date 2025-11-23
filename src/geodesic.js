@@ -24,6 +24,18 @@ if (typeof window !== 'undefined') {
   });
 }
 
+/**
+ * Ensure WASM is initialized (or failed) before proceeding
+ * Call this before using any geodesic functions
+ *
+ * @returns {Promise<void>}
+ */
+export async function ensureWasmInitialized() {
+  if (wasmInitPromise) {
+    await wasmInitPromise;
+  }
+}
+
 //------------------------------------------------------------
 //  logUnitary(U): matrix log for unitary matrices
 //------------------------------------------------------------

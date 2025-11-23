@@ -4,9 +4,12 @@
 
 import './style.css';
 import { RotationChallenge } from './rotation-challenge.js';
+import { ensureWasmInitialized } from './geodesic.js';
 
 // Initialize challenge when DOM is ready
-function init() {
+async function init() {
+  // Wait for WASM to initialize before starting the game
+  await ensureWasmInitialized();
   const canvas = document.getElementById('game-canvas');
   const newChallengeButton = document.getElementById('new-challenge-button');
   const halfDistanceButton = document.getElementById('half-distance-button');
