@@ -1,7 +1,7 @@
-use wasm_bindgen::prelude::*;
 use nalgebra::DMatrix;
 use num_complex::Complex64;
 use std::f64::consts::PI;
+use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 extern "C" {
@@ -15,27 +15,27 @@ extern "C" {
 #[allow(dead_code)]
 fn matrix_log_eigen(m: &DMatrix<f64>) -> DMatrix<Complex64> {
     let _n = m.nrows();
-    
+
     // Try Schur decomposition: M = Q T Q^H
     // where T is upper triangular (or quasi-triangular for real matrices)
     match m.clone().try_schur(1e-12, 500) {
         Some(schur) => {
             // Get the Schur form components - unpack consumes schur
             let (q, t) = schur.unpack();
-            
+
             // For orthogonal matrices, T contains the eigenvalues
             // Compute log(T) - since T is upper triangular, we need to handle it carefully
             let log_t = log_upper_triangular(&t);
-            
+
             // Reconstruct: log(M) = Q * log(T) * Q^H
             let q_complex = q.map(|x| Complex64::new(x, 0.0));
             let q_h = q_complex.adjoint(); // Hermitian transpose
-            
+
             &q_complex * &log_t * &q_h
         }
         None => {
             // Fallback to scaling and squaring if Schur decomposition fails
-            log(&format!("Schur decomposition failed, falling back to scaling and squaring"));
+            log("Schur decomposition failed, falling back to scaling and squaring");
             matrix_log_scaling_squaring(m)
         }
     }
@@ -46,7 +46,7 @@ fn matrix_log_eigen(m: &DMatrix<f64>) -> DMatrix<Complex64> {
 fn log_upper_triangular(t: &DMatrix<f64>) -> DMatrix<Complex64> {
     let n = t.nrows();
     let mut log_t = DMatrix::<Complex64>::zeros(n, n);
-    
+
     // First, compute logarithms of diagonal blocks (eigenvalues)
     let mut i = 0;
     while i < n {
@@ -57,35 +57,35 @@ fn log_upper_triangular(t: &DMatrix<f64>) -> DMatrix<Complex64> {
             let b = t[(i, i + 1)];
             let c = t[(i + 1, i)];
             let d = t[(i + 1, i + 1)];
-            
+
             // For a 2x2 block representing complex eigenvalues, compute its logarithm
             // using eigendecomposition of the small 2x2 block
             let trace = a + d;
             let det = a * d - b * c;
-            
+
             // Eigenvalues: λ = (trace ± sqrt(trace² - 4*det)) / 2
             let discriminant = trace * trace - 4.0 * det;
-            
+
             if discriminant < 0.0 {
                 // Complex eigenvalues
                 let real_part = trace / 2.0;
                 let imag_part = (-discriminant).sqrt() / 2.0;
-                
+
                 // Convert to polar form: λ = r * e^(iθ)
                 let r = (real_part * real_part + imag_part * imag_part).sqrt();
                 let theta = imag_part.atan2(real_part);
-                
+
                 // log(λ) = log(r) + iθ
                 let _log_lambda = Complex64::new(r.ln(), theta);
-                
+
                 // For the 2x2 block, we need to compute log of the block matrix
                 // Using the formula for 2x2 matrices
                 // For now, use a simplified approach: diagonalize, take log, reconstruct
-                
+
                 // Eigenvector for first eigenvalue (real_part + i*imag_part)
                 // We can construct the log block directly
                 let log_r = r.ln();
-                
+
                 // The log of a 2x2 rotation-scaling block is:
                 // [[log_r, -theta], [theta, log_r]]
                 log_t[(i, i)] = Complex64::new(log_r, 0.0);
@@ -97,25 +97,25 @@ fn log_upper_triangular(t: &DMatrix<f64>) -> DMatrix<Complex64> {
                 let sqrt_disc = discriminant.sqrt();
                 let lambda1 = (trace + sqrt_disc) / 2.0;
                 let lambda2 = (trace - sqrt_disc) / 2.0;
-                
+
                 log_t[(i, i)] = if lambda1 > 0.0 {
                     Complex64::new(lambda1.ln(), 0.0)
                 } else {
                     Complex64::new(lambda1.abs().ln(), PI)
                 };
-                
+
                 log_t[(i + 1, i + 1)] = if lambda2 > 0.0 {
                     Complex64::new(lambda2.ln(), 0.0)
                 } else {
                     Complex64::new(lambda2.abs().ln(), PI)
                 };
             }
-            
+
             i += 2;
         } else {
             // Real eigenvalue (1x1 block)
             let lambda = t[(i, i)];
-            
+
             if lambda > 0.0 {
                 log_t[(i, i)] = Complex64::new(lambda.ln(), 0.0);
             } else if lambda < 0.0 {
@@ -125,15 +125,15 @@ fn log_upper_triangular(t: &DMatrix<f64>) -> DMatrix<Complex64> {
                 // λ = 0 is problematic, use small value
                 log_t[(i, i)] = Complex64::new(-1e10, 0.0);
             }
-            
+
             i += 1;
         }
     }
-    
+
     // Compute off-diagonal elements using Parlett's recurrence
     // This is a complex algorithm; for now we'll use a simplified approach
     // that works well for orthogonal matrices where off-diagonal elements are small
-    
+
     // For orthogonal matrices, the Schur form is nearly diagonal or has 2x2 blocks
     // The off-diagonal terms above the blocks can be computed iteratively
     for col in 1..n {
@@ -145,7 +145,7 @@ fn log_upper_triangular(t: &DMatrix<f64>) -> DMatrix<Complex64> {
             if col < n - 1 && t[(col + 1, col)].abs() > 1e-10 {
                 continue;
             }
-            
+
             let t_ij = Complex64::new(t[(row, col)], 0.0);
             if t_ij.norm() > 1e-12 {
                 let diff = log_t[(row, row)] - log_t[(col, col)];
@@ -155,7 +155,7 @@ fn log_upper_triangular(t: &DMatrix<f64>) -> DMatrix<Complex64> {
             }
         }
     }
-    
+
     log_t
 }
 
@@ -215,7 +215,11 @@ fn matrix_sqrt_complex(m: &DMatrix<Complex64>) -> DMatrix<Complex64> {
         let z_new = (&z + &y_inv) * Complex64::new(0.5, 0.0);
 
         // Check convergence
-        let diff = (&y_new - &y).iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
+        let diff = (&y_new - &y)
+            .iter()
+            .map(|x| x.norm_sqr())
+            .sum::<f64>()
+            .sqrt();
         y = y_new;
         z = z_new;
 
@@ -452,12 +456,17 @@ mod tests {
         // Test that log(I) = 0
         let identity = DMatrix::identity(3, 3);
         let log_i = matrix_log_eigen(&identity);
-        
+
         // Check that all elements are close to zero
         for i in 0..3 {
             for j in 0..3 {
-                assert!(log_i[(i, j)].norm() < 1e-10, 
-                    "log(I)[{},{}] = {:?}, expected ~0", i, j, log_i[(i, j)]);
+                assert!(
+                    log_i[(i, j)].norm() < 1e-10,
+                    "log(I)[{},{}] = {:?}, expected ~0",
+                    i,
+                    j,
+                    log_i[(i, j)]
+                );
             }
         }
     }
@@ -468,25 +477,32 @@ mod tests {
         let angle = PI / 4.0; // 45 degrees
         let cos_a = angle.cos();
         let sin_a = angle.sin();
-        
-        let r = DMatrix::from_row_slice(2, 2, &[
-            cos_a, -sin_a,
-            sin_a,  cos_a,
-        ]);
-        
+
+        let r = DMatrix::from_row_slice(2, 2, &[cos_a, -sin_a, sin_a, cos_a]);
+
         let log_r = matrix_log_eigen(&r);
-        
+
         // For 2D rotation by angle θ, log should be skew-symmetric with elements ±θi
         // log(R) = [[0, -θ], [θ, 0]]
         println!("log(R) = {}", log_r);
-        
+
         // Check skew-symmetry
-        assert!((log_r[(0, 0)].re).abs() < 1e-10, "Diagonal should be real and near 0");
-        assert!((log_r[(1, 1)].re).abs() < 1e-10, "Diagonal should be real and near 0");
-        
+        assert!(
+            (log_r[(0, 0)].re).abs() < 1e-10,
+            "Diagonal should be real and near 0"
+        );
+        assert!(
+            (log_r[(1, 1)].re).abs() < 1e-10,
+            "Diagonal should be real and near 0"
+        );
+
         // Check that it captured the rotation
         let mag = (log_r[(0, 1)].norm_sqr() + log_r[(1, 0)].norm_sqr()).sqrt();
-        println!("Magnitude: {}, expected: {}", mag, angle * std::f64::consts::SQRT_2);
+        println!(
+            "Magnitude: {}, expected: {}",
+            mag,
+            angle * std::f64::consts::SQRT_2
+        );
     }
 
     #[test]
@@ -495,19 +511,22 @@ mod tests {
         let angle = PI / 6.0; // 30 degrees
         let cos_a = angle.cos();
         let sin_a = angle.sin();
-        
-        let r = DMatrix::from_row_slice(3, 3, &[
-            cos_a, -sin_a, 0.0,
-            sin_a,  cos_a, 0.0,
-            0.0,    0.0,   1.0,
-        ]);
-        
+
+        let r = DMatrix::from_row_slice(
+            3,
+            3,
+            &[cos_a, -sin_a, 0.0, sin_a, cos_a, 0.0, 0.0, 0.0, 1.0],
+        );
+
         let log_r = matrix_log_eigen(&r);
-        
+
         println!("3D rotation log = {}", log_r);
-        
+
         // Check that z-axis component is preserved (no rotation in z)
-        assert!((log_r[(2, 2)].norm()) < 1e-10, "z-component should be near 0");
+        assert!(
+            (log_r[(2, 2)].norm()) < 1e-10,
+            "z-component should be near 0"
+        );
     }
 
     #[test]
@@ -516,23 +535,29 @@ mod tests {
         let angle = PI / 3.0;
         let cos_a = angle.cos();
         let sin_a = angle.sin();
-        
-        let r = DMatrix::from_row_slice(3, 3, &[
-            cos_a, -sin_a, 0.0,
-            sin_a,  cos_a, 0.0,
-            0.0,    0.0,   1.0,
-        ]);
-        
+
+        let r = DMatrix::from_row_slice(
+            3,
+            3,
+            &[cos_a, -sin_a, 0.0, sin_a, cos_a, 0.0, 0.0, 0.0, 1.0],
+        );
+
         let log_eigen = matrix_log_eigen(&r);
         let log_scaling = matrix_log_scaling_squaring(&r);
-        
+
         // Check that results are similar
         for i in 0..3 {
             for j in 0..3 {
                 let diff = (log_eigen[(i, j)] - log_scaling[(i, j)]).norm();
-                assert!(diff < 1e-8, 
-                    "Methods differ at [{},{}]: eigen={:?}, scaling={:?}, diff={}", 
-                    i, j, log_eigen[(i, j)], log_scaling[(i, j)], diff);
+                assert!(
+                    diff < 1e-8,
+                    "Methods differ at [{},{}]: eigen={:?}, scaling={:?}, diff={}",
+                    i,
+                    j,
+                    log_eigen[(i, j)],
+                    log_scaling[(i, j)],
+                    diff
+                );
             }
         }
     }
