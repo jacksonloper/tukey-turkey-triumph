@@ -3,7 +3,14 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initWasm, geodesicDistanceWasm, geodesicInterpWasm, isWasmAvailable } from './geodesic-wasm.js';
+import { 
+  initWasm, 
+  geodesicDistanceWasm, 
+  geodesicDistanceWasmEigen,
+  geodesicInterpWasm, 
+  geodesicInterpWasmEigen,
+  isWasmAvailable 
+} from './geodesic-wasm.js';
 import { geodesicDistanceArray, geodesicInterpArray } from './geodesic.js';
 
 describe('WASM Geodesic Functions', () => {
@@ -151,6 +158,89 @@ describe('WASM Geodesic Functions', () => {
           expect(Math.abs(result[i][j] - B[i][j])).toBeLessThan(1e-7);
         }
       }
+    });
+  });
+
+  describe('Eigendecomposition-based methods', () => {
+    it('geodesicDistanceWasmEigen should match standard method', () => {
+      if (!isWasmAvailable()) {
+        console.warn('Skipping test: WASM not available');
+        return;
+      }
+
+      // Identity matrix
+      const I = [
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+      ];
+
+      // 60 degree rotation around z-axis
+      const cos60 = Math.cos(Math.PI / 3);
+      const sin60 = Math.sin(Math.PI / 3);
+      const R60 = [
+        [cos60, -sin60, 0],
+        [sin60, cos60, 0],
+        [0, 0, 1],
+      ];
+
+      const distStandard = geodesicDistanceWasm(I, R60);
+      const distEigen = geodesicDistanceWasmEigen(I, R60);
+
+      console.log('Standard distance:', distStandard);
+      console.log('Eigen distance:', distEigen);
+
+      // Both methods should give similar results
+      expect(Math.abs(distStandard - distEigen)).toBeLessThan(0.01);
+    });
+
+    it('geodesicInterpWasmEigen should match standard method', () => {
+      if (!isWasmAvailable()) {
+        console.warn('Skipping test: WASM not available');
+        return;
+      }
+
+      // Identity matrix
+      const I = [
+        [1, 0],
+        [0, 1],
+      ];
+
+      // 90 degree rotation
+      const R90 = [
+        [0, -1],
+        [1, 0],
+      ];
+
+      // Interpolate at t=0.5 (midpoint)
+      const resultStandard = geodesicInterpWasm(I, R90, 0.5);
+      const resultEigen = geodesicInterpWasmEigen(I, R90, 0.5);
+
+      console.log('Standard interp:', resultStandard);
+      console.log('Eigen interp:', resultEigen);
+
+      // Compare element-wise
+      for (let i = 0; i < 2; i++) {
+        for (let j = 0; j < 2; j++) {
+          expect(Math.abs(resultStandard[i][j] - resultEigen[i][j])).toBeLessThan(0.01);
+        }
+      }
+    });
+
+    it('geodesicDistanceWasmEigen should return zero for identical matrices', () => {
+      if (!isWasmAvailable()) {
+        console.warn('Skipping test: WASM not available');
+        return;
+      }
+
+      const I = [
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+      ];
+
+      const distEigen = geodesicDistanceWasmEigen(I, I);
+      expect(distEigen).toBeLessThan(1e-10);
     });
   });
 });

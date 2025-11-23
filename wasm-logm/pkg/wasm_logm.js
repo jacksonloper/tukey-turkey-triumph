@@ -30,10 +30,6 @@ function getStringFromWasm0(ptr, len) {
     return decodeText(ptr, len);
 }
 
-export function init() {
-    wasm.init();
-}
-
 let cachedFloat64ArrayMemory0 = null;
 
 function getFloat64ArrayMemory0() {
@@ -57,14 +53,51 @@ function getArrayF64FromWasm0(ptr, len) {
     return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
 }
 /**
+ * Geodesic interpolation using eigendecomposition approach
+ * @param {Float64Array} a
+ * @param {Float64Array} b
+ * @param {number} t
+ * @param {number} n
+ * @returns {Float64Array}
+ */
+export function geodesic_interp_eigen(a, b, t, n) {
+    const ptr0 = passArrayF64ToWasm0(a, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArrayF64ToWasm0(b, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.geodesic_interp_eigen(ptr0, len0, ptr1, len1, t, n);
+    var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v3;
+}
+
+/**
+ * Geodesic distance using eigendecomposition approach
+ * @param {Float64Array} r
+ * @param {Float64Array} t
+ * @param {number} n
+ * @returns {number}
+ */
+export function geodesic_distance_eigen(r, t, n) {
+    const ptr0 = passArrayF64ToWasm0(r, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArrayF64ToWasm0(t, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.geodesic_distance_eigen(ptr0, len0, ptr1, len1, n);
+    return ret;
+}
+
+/**
+ * Matrix logarithm using eigendecomposition approach (via Schur decomposition)
+ * This is an alternative implementation for testing and comparison
  * @param {Float64Array} matrix
  * @param {number} n
  * @returns {Float64Array}
  */
-export function matrix_expm(matrix, n) {
+export function matrix_logm_eigen(matrix, n) {
     const ptr0 = passArrayF64ToWasm0(matrix, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.matrix_expm(ptr0, len0, n);
+    const ret = wasm.matrix_logm_eigen(ptr0, len0, n);
     var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
     return v2;
@@ -101,6 +134,24 @@ export function geodesic_distance(r, t, n) {
     const len1 = WASM_VECTOR_LEN;
     const ret = wasm.geodesic_distance(ptr0, len0, ptr1, len1, n);
     return ret;
+}
+
+/**
+ * @param {Float64Array} matrix
+ * @param {number} n
+ * @returns {Float64Array}
+ */
+export function matrix_expm(matrix, n) {
+    const ptr0 = passArrayF64ToWasm0(matrix, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.matrix_expm(ptr0, len0, n);
+    var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v2;
+}
+
+export function init() {
+    wasm.init();
 }
 
 /**
