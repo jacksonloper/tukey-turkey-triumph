@@ -10,7 +10,9 @@ import {
   initWasm,
   isWasmAvailable,
   geodesicDistanceWasm,
-  geodesicInterpWasm
+  geodesicInterpWasm,
+  matrixLogmWasm,
+  matrixExpmWasm
 } from './geodesic-wasm.js';
 
 // Try to initialize WASM on module load
@@ -28,22 +30,51 @@ if (typeof window !== 'undefined') {
 
 /**
  * Compute matrix logarithm for unitary/orthogonal matrices
- * NOTE: Standard mathjs does not include logm - this function requires WASM support
- * or will throw an error. Use geodesicDistanceArray/geodesicInterpArray which
- * handle WASM initialization automatically.
+ * Uses WASM implementation when standard mathjs doesn't have logm
  *
  * @param {Object} U - mathjs matrix (unitary or orthogonal)
  * @returns {Object} mathjs matrix representing log(U)
  */
 export function logUnitary(U) {
-  // Check if mathjs has logm (custom fork) - if not, suggest using WASM
-  if (typeof math.logm !== 'function') {
+  // If mathjs has logm (custom fork), use it
+  if (typeof math.logm === 'function') {
+    return math.logm(U);
+  }
+
+  // Otherwise, use WASM implementation
+  if (!isWasmAvailable()) {
     throw new Error(
-      'Matrix logarithm (logm) not available in standard mathjs. ' +
-      'Use geodesicDistanceArray/geodesicInterpArray which use WASM implementation.'
+      'Matrix logarithm requires WASM support (standard mathjs does not include logm). ' +
+      'WASM module failed to initialize.'
     );
   }
-  return math.logm(U);
+
+  // Convert to array, call WASM, convert back
+  const arr = U.toArray();
+  const n = arr.length;
+  const logArr = matrixLogmWasm(arr);
+
+  // logArr is flat complex array [re, im, re, im, ...]
+  // Convert back to mathjs matrix (real part only for real input)
+  const result = [];
+  for (let i = 0; i < n; i++) {
+    const row = [];
+    for (let j = 0; j < n; j++) {
+      const idx = (i * n + j) * 2;
+      const re = logArr[idx];
+      const im = logArr[idx + 1];
+      // For real orthogonal matrices, log may have small imaginary parts
+      // Use complex number if imaginary part is significant
+      if (Math.abs(im) > 1e-10) {
+        row.push(math.complex(re, im));
+      } else {
+        row.push(re);
+      }
+    }
+    result.push(row);
+  }
+
+  return math.matrix(result);
 }
 
 //------------------------------------------------------------
@@ -156,19 +187,19 @@ export function geodesicInterp(A, B, t) {
   // Compute relative rotation: R_rel = A^T * B
   const AT = math.ctranspose(A);
   const R_rel = math.multiply(AT, B);
-  
-  // Take matrix logarithm of relative rotation
-  const log_R = math.logm(R_rel);
-  
+
+  // Take matrix logarithm of relative rotation (uses WASM if needed)
+  const log_R = logUnitary(R_rel);
+
   // Scale by interpolation parameter t
   const scaled_log = math.multiply(log_R, t);
-  
+
   // Exponentiate to get intermediate relative rotation
   const R_interp = math.expm(scaled_log);
-  
+
   // Apply to starting rotation
   const result = math.multiply(A, R_interp);
-  
+
   return result;
 }
 
