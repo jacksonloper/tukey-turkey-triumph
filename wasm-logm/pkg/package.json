@@ -1,0 +1,15 @@
+{
+  "name": "wasm-logm",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "wasm_logm_bg.wasm",
+    "wasm_logm.js",
+    "wasm_logm.d.ts"
+  ],
+  "main": "wasm_logm.js",
+  "types": "wasm_logm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
