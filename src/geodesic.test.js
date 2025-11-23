@@ -87,11 +87,71 @@ describe('Geodesic Distance Functions (WASM)', () => {
     });
   });
 
-  // NOTE: dGeodesicAtZeroArray tests skipped - requires logm which is not in standard mathjs
-  // and WASM implementation of derivative not yet implemented
-  describe.skip('dGeodesicAtZeroArray', () => {
-    it('would compute derivative for identity case', () => {
-      // Skipped - requires mathjs logm
+  describe('dGeodesicAtZeroArray', () => {
+    it('should compute derivative for identity case', () => {
+      const I = identityNxN(2);
+      const R = rotationND(2, 0, 1, 0.3);
+
+      // Create a small perturbation direction
+      const K = [
+        [0, -1],
+        [1, 0]
+      ]; // Generator for 2D rotation
+
+      const deriv = dGeodesicAtZeroArray(I, R, K);
+
+      // Should give a finite result
+      expect(isFinite(deriv)).toBe(true);
+    });
+
+    it('should be zero when at target', () => {
+      const R = rotationND(2, 0, 1, 0.5);
+      const K = [
+        [0, -1],
+        [1, 0]
+      ];
+
+      const deriv = dGeodesicAtZeroArray(R, R, K);
+
+      // At the target, the derivative should be near zero
+      expect(Math.abs(deriv)).toBeLessThan(1e-6);
+    });
+
+    it('should give consistent results with different step sizes', () => {
+      const R = identityNxN(2);
+      const T = rotationND(2, 0, 1, 0.5);
+      const K = [
+        [0, -1],
+        [1, 0]
+      ];
+
+      const deriv1 = dGeodesicAtZeroArray(R, T, K, 1e-5);
+      const deriv2 = dGeodesicAtZeroArray(R, T, K, 1e-6);
+
+      // Results should be similar for different step sizes
+      expect(Math.abs(deriv1 - deriv2)).toBeLessThan(0.01);
+    });
+
+    it('should work with different swivel directions', () => {
+      const R = identityNxN(2);
+      const T = rotationND(2, 0, 1, 0.5);
+
+      const K1 = [
+        [0, -1],
+        [1, 0]
+      ];
+
+      const K2 = [
+        [0, -0.5],
+        [0.5, 0]
+      ];
+
+      const deriv1 = dGeodesicAtZeroArray(R, T, K1);
+      const deriv2 = dGeodesicAtZeroArray(R, T, K2);
+
+      // Both should give finite results
+      expect(isFinite(deriv1)).toBe(true);
+      expect(isFinite(deriv2)).toBe(true);
     });
   });
 
