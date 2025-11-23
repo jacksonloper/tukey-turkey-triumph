@@ -21,3 +21,4 @@ wasm-logm/wasm-pack.log
 # OS files
 .DS_Store
 Thumbs.db
+test-results/
