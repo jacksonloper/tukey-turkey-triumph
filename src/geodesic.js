@@ -1,11 +1,26 @@
 /**
  * Geodesic distance calculations for unitary/orthogonal matrices
  * Uses matrix logarithm and matrix exponential for proper distance on SO(n)
- * 
- * Requires: mathjs (fork with logm support)
+ *
+ * Prefers WASM implementation for performance, falls back to mathjs
  */
 
 import * as math from 'mathjs';
+import {
+  initWasm,
+  isWasmAvailable,
+  geodesicDistanceWasm,
+  geodesicInterpWasm
+} from './geodesic-wasm.js';
+
+// Try to initialize WASM on module load
+let wasmInitPromise = null;
+if (typeof window !== 'undefined') {
+  // Browser environment - initialize asynchronously
+  wasmInitPromise = initWasm().catch(() => {
+    console.log('WASM not available, using mathjs for geodesic operations');
+  });
+}
 
 //------------------------------------------------------------
 //  logUnitary(U): matrix log for unitary matrices
@@ -13,13 +28,21 @@ import * as math from 'mathjs';
 
 /**
  * Compute matrix logarithm for unitary/orthogonal matrices
- * Uses mathjs's built-in logm function which implements
- * the inverse scaling and squaring method with Taylor series
- * 
+ * NOTE: Standard mathjs does not include logm - this function requires WASM support
+ * or will throw an error. Use geodesicDistanceArray/geodesicInterpArray which
+ * handle WASM initialization automatically.
+ *
  * @param {Object} U - mathjs matrix (unitary or orthogonal)
  * @returns {Object} mathjs matrix representing log(U)
  */
 export function logUnitary(U) {
+  // Check if mathjs has logm (custom fork) - if not, suggest using WASM
+  if (typeof math.logm !== 'function') {
+    throw new Error(
+      'Matrix logarithm (logm) not available in standard mathjs. ' +
+      'Use geodesicDistanceArray/geodesicInterpArray which use WASM implementation.'
+    );
+  }
   return math.logm(U);
 }
 
@@ -179,12 +202,19 @@ export function mathMatrixToArray(M) {
 
 /**
  * Geodesic distance between two rotations (native array version)
- * 
+ * Uses WASM when available, falls back to mathjs
+ *
  * @param {Array} R - 2D array representing first rotation matrix
  * @param {Array} T - 2D array representing second rotation matrix
  * @returns {number} geodesic distance
  */
 export function geodesicDistanceArray(R, T) {
+  // Use WASM if available for better performance
+  if (isWasmAvailable()) {
+    return geodesicDistanceWasm(R, T);
+  }
+
+  // Fall back to mathjs
   const R_math = arrayToMathMatrix(R);
   const T_math = arrayToMathMatrix(T);
   return geodesicDistance(R_math, T_math);
@@ -208,13 +238,20 @@ export function dGeodesicAtZeroArray(R, T, K, h = 1e-6) {
 
 /**
  * Geodesic interpolation between two rotations (native array version)
- * 
+ * Uses WASM when available, falls back to mathjs
+ *
  * @param {Array} A - 2D array representing start rotation matrix
  * @param {Array} B - 2D array representing end rotation matrix
  * @param {number} t - interpolation parameter (0 = A, 1 = B)
  * @returns {Array} 2D array representing interpolated rotation
  */
 export function geodesicInterpArray(A, B, t) {
+  // Use WASM if available for better performance
+  if (isWasmAvailable()) {
+    return geodesicInterpWasm(A, B, t);
+  }
+
+  // Fall back to mathjs
   const A_math = arrayToMathMatrix(A);
   const B_math = arrayToMathMatrix(B);
   const result_math = geodesicInterp(A_math, B_math, t);
