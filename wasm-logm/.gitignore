@@ -1,0 +1,3 @@
+target/
+# pkg/ - Committed for CI/CD (Netlify doesn't have wasm-pack installed)
+wasm-pack.log

@@ -5,15 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build:wasm": "cd wasm-logm && bash build-if-available.sh",
+    "build": "npm run build:wasm && vite build",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:local": "DEPLOY_URL=http://localhost:5173 playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "devDependencies": {
     "vite": "^7.1.7",
     "vitest": "^2.0.0"
   },
   "dependencies": {
-    "mathjs": "file:.dependencies/mathjs-15.1.0.tgz"
+    "mathjs": "^13.2.0"
   }
 }
