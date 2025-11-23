@@ -3,6 +3,9 @@ use num_complex::Complex64;
 use std::f64::consts::PI;
 use wasm_bindgen::prelude::*;
 
+/// Substitute value for log(0) to avoid -infinity
+const LOG_ZERO_SUBSTITUTE: f64 = -1e10;
+
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
@@ -75,15 +78,8 @@ fn log_upper_triangular(t: &DMatrix<f64>) -> DMatrix<Complex64> {
                 let r = (real_part * real_part + imag_part * imag_part).sqrt();
                 let theta = imag_part.atan2(real_part);
 
+                // For the 2x2 block, we compute log directly from polar form
                 // log(λ) = log(r) + iθ
-                let _log_lambda = Complex64::new(r.ln(), theta);
-
-                // For the 2x2 block, we need to compute log of the block matrix
-                // Using the formula for 2x2 matrices
-                // For now, use a simplified approach: diagonalize, take log, reconstruct
-
-                // Eigenvector for first eigenvalue (real_part + i*imag_part)
-                // We can construct the log block directly
                 let log_r = r.ln();
 
                 // The log of a 2x2 rotation-scaling block is:
@@ -122,8 +118,8 @@ fn log_upper_triangular(t: &DMatrix<f64>) -> DMatrix<Complex64> {
                 // log(-|λ|) = log(|λ|) + iπ
                 log_t[(i, i)] = Complex64::new(lambda.abs().ln(), PI);
             } else {
-                // λ = 0 is problematic, use small value
-                log_t[(i, i)] = Complex64::new(-1e10, 0.0);
+                // λ = 0 is problematic, use substitute value
+                log_t[(i, i)] = Complex64::new(LOG_ZERO_SUBSTITUTE, 0.0);
             }
 
             i += 1;
