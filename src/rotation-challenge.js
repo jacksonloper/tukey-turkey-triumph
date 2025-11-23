@@ -11,7 +11,8 @@ import {
   rotationDistanceSO,
   interpRotationSO,
   geodesicInterpArray,
-  geodesicDistanceArray
+  geodesicDistanceArray,
+  dGeodesicAtZeroArray
 } from './math4d.js';
 import { ScatterplotMatrix } from './scatterplot.js';
 import {
@@ -46,6 +47,8 @@ export class RotationChallenge {
     this.gridEnabled = false;
     this.mobileViewEnabled = false;
     this.mobileOverlayEnabled = false;
+    this.showGradientWidget = false;
+    this.showDistanceInfo = false; // Off by default as per requirement
 
     // Rotation state
     this.rotationSpeed = Math.PI / 2; // rad/sec
@@ -56,6 +59,12 @@ export class RotationChallenge {
     this.bestDistance = Infinity;
     this.winThreshold = 0.1; // Distance threshold for winning (close to 0)
     this.hasWon = false;
+    
+    // Auto-lock settings (off by default as per requirement)
+    this.autoLockEnabled = false;
+    this.autoLockThreshold = 0.5; // Threshold when auto-lock triggers
+    this.hasTriggeredAutoLock = false; // Track if we've triggered auto-lock this cycle
+    this.lastDistanceAboveReset = Infinity; // Track if distance went above 1.0 to reset
 
     // Halfway animation state
     this.isAnimatingHalfway = false;
@@ -97,6 +106,44 @@ export class RotationChallenge {
       }
     }
     return planes;
+  }
+
+  /**
+   * Create a skew-symmetric generator matrix for plane (i, j)
+   * K[i][j] = -1, K[j][i] = +1, all other entries = 0
+   */
+  createGeneratorMatrix(i, j) {
+    const K = identityNxN(this.dimensions);
+    for (let row = 0; row < this.dimensions; row++) {
+      for (let col = 0; col < this.dimensions; col++) {
+        K[row][col] = 0;
+      }
+    }
+    K[i][j] = -1;
+    K[j][i] = 1;
+    return K;
+  }
+
+  /**
+   * Compute gradient of geodesic distance w.r.t each rotation plane
+   * Returns array of {plane: [i,j], gradient: number, absGradient: number}
+   */
+  computeGradients() {
+    const gradients = [];
+    for (const [i, j] of this.rotationPlanes) {
+      const K = this.createGeneratorMatrix(i, j);
+      const grad = dGeodesicAtZeroArray(
+        this.playerOrientation,
+        this.targetRotation,
+        K
+      );
+      gradients.push({
+        plane: [i, j],
+        gradient: grad,
+        absGradient: Math.abs(grad)
+      });
+    }
+    return gradients;
   }
 
   /**
@@ -159,8 +206,8 @@ export class RotationChallenge {
           t
         );
       }
-    } else {
-      // Check for continuous rotation (only when not animating)
+    } else if (!this.isAutoHalving) {
+      // Check for continuous rotation (only when not animating and not auto-halving)
       const heldDims = this.scatterplot.checkContinuousRotation();
 
       if (heldDims) {
@@ -176,6 +223,28 @@ export class RotationChallenge {
 
     // Compute current rotation distance
     this.updateDistance();
+    
+    // Check for auto-lock condition
+    // Auto-lock: move 99% of the way toward target when distance falls below threshold
+    // Only trigger once per cycle (until distance exceeds 1.0 and falls below threshold again)
+    if (this.autoLockEnabled && !this.isAnimatingHalfway) {
+      // Reset the trigger if distance went above 1.0
+      if (this.currentDistance > 1.0) {
+        this.lastDistanceAboveReset = this.currentDistance;
+        this.hasTriggeredAutoLock = false;
+      }
+      
+      // Trigger auto-lock if:
+      // 1. We haven't triggered it yet this cycle
+      // 2. Distance is below threshold
+      // 3. We've seen distance above 1.0 since last trigger (or this is first time)
+      if (!this.hasTriggeredAutoLock && 
+          this.currentDistance < this.autoLockThreshold &&
+          this.lastDistanceAboveReset > 1.0) {
+        this.startAutoLock();
+        this.hasTriggeredAutoLock = true;
+      }
+    }
 
     // Check win condition (distance below threshold)
     if (!this.hasWon && this.currentDistance <= this.winThreshold) {
@@ -268,7 +337,8 @@ export class RotationChallenge {
     this.scatterplot.render(player, [], {
       showPlayer: false,
       showGrid: this.gridEnabled,
-      paths: pathsToRender
+      paths: pathsToRender,
+      gradients: this.showGradientWidget ? this.computeGradients() : null
     });
   }
 
@@ -276,16 +346,25 @@ export class RotationChallenge {
    * Update UI elements
    */
   updateUI() {
+    // Update distance display based on showDistanceInfo setting
     if (this.alignmentScoreEl) {
-      this.alignmentScoreEl.textContent = this.currentDistance === Infinity
-        ? '—'
-        : this.currentDistance.toFixed(3);
+      if (this.showDistanceInfo) {
+        this.alignmentScoreEl.textContent = this.currentDistance === Infinity
+          ? '—'
+          : this.currentDistance.toFixed(3);
+      } else {
+        this.alignmentScoreEl.textContent = '—';
+      }
     }
 
     if (this.bestScoreEl) {
-      this.bestScoreEl.textContent = this.bestDistance === Infinity
-        ? '—'
-        : this.bestDistance.toFixed(3);
+      if (this.showDistanceInfo) {
+        this.bestScoreEl.textContent = this.bestDistance === Infinity
+          ? '—'
+          : this.bestDistance.toFixed(3);
+      } else {
+        this.bestScoreEl.textContent = '—';
+      }
     }
   }
 
@@ -305,6 +384,27 @@ export class RotationChallenge {
     );
 
     // Start animation
+    this.isAnimatingHalfway = true;
+    this.halfwayProgress = 0;
+    this.halfwayStartOrientation = this.playerOrientation;
+    this.halfwayTargetOrientation = targetOrientation;
+  }
+
+  /**
+   * Auto-lock: Move 99% of the way toward the target rotation
+   * Uses single animation like Auto-Rotate button
+   */
+  startAutoLock() {
+    if (this.isAnimatingHalfway) return;
+    
+    // Interpolate 99% toward target (0.99 = 99%)
+    const targetOrientation = geodesicInterpArray(
+      this.playerOrientation,
+      this.targetRotation,
+      0.99
+    );
+
+    // Start animation using same mechanism as Auto-Rotate
     this.isAnimatingHalfway = true;
     this.halfwayProgress = 0;
     this.halfwayStartOrientation = this.playerOrientation;
@@ -348,6 +448,44 @@ export class RotationChallenge {
     this.mobileOverlayEnabled = enabled;
     // Pass the setting to the scatterplot renderer
     this.scatterplot.setMobileOverlayEnabled(enabled);
+  }
+
+  /**
+   * Set gradient widget enabled state
+   */
+  setGradientWidgetEnabled(enabled) {
+    this.showGradientWidget = enabled;
+    // Pass gradients to scatterplot if enabled
+    if (enabled && this.mobileViewEnabled) {
+      this.scatterplot.setGradientData(this.computeGradients());
+    } else {
+      this.scatterplot.setGradientData(null);
+    }
+  }
+
+  /**
+   * Set distance info display state
+   */
+  setShowDistanceInfo(enabled) {
+    this.showDistanceInfo = enabled;
+    this.updateUI();
+  }
+
+  /**
+   * Set auto-lock enabled state
+   */
+  setAutoLockEnabled(enabled) {
+    this.autoLockEnabled = enabled;
+    // Reset trigger state when enabling/disabling
+    this.hasTriggeredAutoLock = false;
+    this.lastDistanceAboveReset = Infinity;
+  }
+
+  /**
+   * Set auto-lock threshold
+   */
+  setAutoLockThreshold(threshold) {
+    this.autoLockThreshold = threshold;
   }
 
   /**

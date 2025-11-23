@@ -17,6 +17,9 @@ export default defineConfig({
   define: {
     __GIT_HASH__: JSON.stringify(gitHash),
   },
+  test: {
+    exclude: ['e2e/**', 'node_modules/**'],
+  },
   build: {
     rollupOptions: {
       input: {
