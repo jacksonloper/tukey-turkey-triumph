@@ -53,7 +53,9 @@ function getArrayF64FromWasm0(ptr, len) {
     return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
 }
 /**
- * Geodesic interpolation using eigendecomposition approach
+ * Geodesic interpolation using complex Schur decomposition (for orthogonal matrices only)
+ *
+ * **Important**: This method only works correctly for orthogonal/unitary matrices.
  * @param {Float64Array} a
  * @param {Float64Array} b
  * @param {number} t
@@ -72,7 +74,9 @@ export function geodesic_interp_eigen(a, b, t, n) {
 }
 
 /**
- * Geodesic distance using eigendecomposition approach
+ * Geodesic distance using complex Schur decomposition (for orthogonal matrices only)
+ *
+ * **Important**: This method only works correctly for orthogonal/unitary matrices.
  * @param {Float64Array} r
  * @param {Float64Array} t
  * @param {number} n
@@ -88,8 +92,11 @@ export function geodesic_distance_eigen(r, t, n) {
 }
 
 /**
- * Matrix logarithm using eigendecomposition approach (via Schur decomposition)
- * This is an alternative implementation for testing and comparison
+ * Matrix logarithm using complex Schur decomposition (for orthogonal matrices only)
+ * This is an alternative implementation for testing and comparison.
+ *
+ * **Important**: This method only works correctly for orthogonal/unitary matrices.
+ * For non-orthogonal matrices, use matrix_logm() instead.
  * @param {Float64Array} matrix
  * @param {number} n
  * @returns {Float64Array}

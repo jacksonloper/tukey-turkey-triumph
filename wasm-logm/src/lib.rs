@@ -1,10 +1,6 @@
 use nalgebra::DMatrix;
 use num_complex::Complex64;
-use std::f64::consts::PI;
 use wasm_bindgen::prelude::*;
-
-/// Substitute value for log(0) to avoid -infinity
-const LOG_ZERO_SUBSTITUTE: f64 = -1e10;
 
 #[wasm_bindgen]
 extern "C" {
@@ -12,29 +8,63 @@ extern "C" {
     fn log(s: &str);
 }
 
-/// Matrix logarithm using eigendecomposition for orthogonal matrices
-/// This implementation uses Schur decomposition to compute eigenvalues and eigenvectors
-/// For rotation matrices in SO(n), eigenvalues lie on the unit circle
+/// Matrix logarithm for orthogonal matrices using complex Schur decomposition
+///
+/// This implementation is specifically designed for orthogonal/unitary matrices.
+/// For orthogonal matrices, the complex Schur form is diagonal (eigenvalues on diagonal).
+///
+/// Algorithm:
+/// 1. Convert real matrix to complex
+/// 2. Compute complex Schur decomposition: M = Q T Q^H (T is upper triangular)
+/// 3. For orthogonal matrices, T should be diagonal
+/// 4. Compute log(T) by taking logarithm of diagonal elements
+/// 5. Reconstruct: log(M) = Q log(T) Q^H
+///
+/// **Note**: This only works correctly for orthogonal matrices (rotations).
 #[allow(dead_code)]
 fn matrix_log_eigen(m: &DMatrix<f64>) -> DMatrix<Complex64> {
-    let _n = m.nrows();
+    let n = m.nrows();
 
-    // Try Schur decomposition: M = Q T Q^H
-    // where T is upper triangular (or quasi-triangular for real matrices)
-    match m.clone().try_schur(1e-12, 500) {
+    // Convert to complex matrix
+    let m_complex = m.map(|x| Complex64::new(x, 0.0));
+
+    // Compute complex Schur decomposition: M = Q T Q^H
+    // For complex matrices, T is upper triangular (not quasi-triangular)
+    match m_complex.try_schur(1e-12, 500) {
         Some(schur) => {
             // Get the Schur form components - unpack consumes schur
             let (q, t) = schur.unpack();
 
-            // For orthogonal matrices, T contains the eigenvalues
-            // Compute log(T) - since T is upper triangular, we need to handle it carefully
-            let log_t = log_upper_triangular(&t);
+            // For orthogonal matrices, T should be diagonal (eigenvalues on diagonal)
+            // Verify this assumption
+            let mut max_off_diag = 0.0_f64;
+            for i in 0..n {
+                for j in 0..n {
+                    if i != j {
+                        max_off_diag = max_off_diag.max(t[(i, j)].norm());
+                    }
+                }
+            }
+
+            if max_off_diag > 1e-6 {
+                log(&format!(
+                    "Warning: Schur form not diagonal (max off-diag: {}). Matrix may not be orthogonal.",
+                    max_off_diag
+                ));
+            }
+
+            // Compute log(T) - for diagonal matrix, just take log of diagonal elements
+            let mut log_t = DMatrix::<Complex64>::zeros(n, n);
+            for i in 0..n {
+                let eigenvalue = t[(i, i)];
+                // For orthogonal matrices, eigenvalues are on the unit circle
+                // log(λ) = log|λ| + i*arg(λ)
+                log_t[(i, i)] = eigenvalue.ln();
+            }
 
             // Reconstruct: log(M) = Q * log(T) * Q^H
-            let q_complex = q.map(|x| Complex64::new(x, 0.0));
-            let q_h = q_complex.adjoint(); // Hermitian transpose
-
-            &q_complex * &log_t * &q_h
+            let q_h = q.adjoint(); // Hermitian transpose
+            &q * &log_t * &q_h
         }
         None => {
             // Fallback to scaling and squaring if Schur decomposition fails
@@ -42,117 +72,6 @@ fn matrix_log_eigen(m: &DMatrix<f64>) -> DMatrix<Complex64> {
             matrix_log_scaling_squaring(m)
         }
     }
-}
-
-/// Compute logarithm of an upper triangular matrix
-/// For quasi-triangular matrices (from real Schur form), this handles 2x2 blocks
-fn log_upper_triangular(t: &DMatrix<f64>) -> DMatrix<Complex64> {
-    let n = t.nrows();
-    let mut log_t = DMatrix::<Complex64>::zeros(n, n);
-
-    // First, compute logarithms of diagonal blocks (eigenvalues)
-    let mut i = 0;
-    while i < n {
-        // Check if we have a 2x2 block (complex conjugate eigenvalue pair)
-        if i + 1 < n && t[(i + 1, i)].abs() > 1e-10 {
-            // Extract 2x2 block
-            let a = t[(i, i)];
-            let b = t[(i, i + 1)];
-            let c = t[(i + 1, i)];
-            let d = t[(i + 1, i + 1)];
-
-            // For a 2x2 block representing complex eigenvalues, compute its logarithm
-            // using eigendecomposition of the small 2x2 block
-            let trace = a + d;
-            let det = a * d - b * c;
-
-            // Eigenvalues: λ = (trace ± sqrt(trace² - 4*det)) / 2
-            let discriminant = trace * trace - 4.0 * det;
-
-            if discriminant < 0.0 {
-                // Complex eigenvalues
-                let real_part = trace / 2.0;
-                let imag_part = (-discriminant).sqrt() / 2.0;
-
-                // Convert to polar form: λ = r * e^(iθ)
-                let r = (real_part * real_part + imag_part * imag_part).sqrt();
-                let theta = imag_part.atan2(real_part);
-
-                // For the 2x2 block, we compute log directly from polar form
-                // log(λ) = log(r) + iθ
-                let log_r = r.ln();
-
-                // The log of a 2x2 rotation-scaling block is:
-                // [[log_r, -theta], [theta, log_r]]
-                log_t[(i, i)] = Complex64::new(log_r, 0.0);
-                log_t[(i, i + 1)] = Complex64::new(-theta, 0.0);
-                log_t[(i + 1, i)] = Complex64::new(theta, 0.0);
-                log_t[(i + 1, i + 1)] = Complex64::new(log_r, 0.0);
-            } else {
-                // Real eigenvalues (shouldn't typically happen for orthogonal matrices)
-                let sqrt_disc = discriminant.sqrt();
-                let lambda1 = (trace + sqrt_disc) / 2.0;
-                let lambda2 = (trace - sqrt_disc) / 2.0;
-
-                log_t[(i, i)] = if lambda1 > 0.0 {
-                    Complex64::new(lambda1.ln(), 0.0)
-                } else {
-                    Complex64::new(lambda1.abs().ln(), PI)
-                };
-
-                log_t[(i + 1, i + 1)] = if lambda2 > 0.0 {
-                    Complex64::new(lambda2.ln(), 0.0)
-                } else {
-                    Complex64::new(lambda2.abs().ln(), PI)
-                };
-            }
-
-            i += 2;
-        } else {
-            // Real eigenvalue (1x1 block)
-            let lambda = t[(i, i)];
-
-            if lambda > 0.0 {
-                log_t[(i, i)] = Complex64::new(lambda.ln(), 0.0);
-            } else if lambda < 0.0 {
-                // log(-|λ|) = log(|λ|) + iπ
-                log_t[(i, i)] = Complex64::new(lambda.abs().ln(), PI);
-            } else {
-                // λ = 0 is problematic, use substitute value
-                log_t[(i, i)] = Complex64::new(LOG_ZERO_SUBSTITUTE, 0.0);
-            }
-
-            i += 1;
-        }
-    }
-
-    // Compute off-diagonal elements using Parlett's recurrence
-    // This is a complex algorithm; for now we'll use a simplified approach
-    // that works well for orthogonal matrices where off-diagonal elements are small
-
-    // For orthogonal matrices, the Schur form is nearly diagonal or has 2x2 blocks
-    // The off-diagonal terms above the blocks can be computed iteratively
-    for col in 1..n {
-        for row in 0..col {
-            // Skip if we're inside a 2x2 block
-            if row > 0 && t[(row, row - 1)].abs() > 1e-10 {
-                continue;
-            }
-            if col < n - 1 && t[(col + 1, col)].abs() > 1e-10 {
-                continue;
-            }
-
-            let t_ij = Complex64::new(t[(row, col)], 0.0);
-            if t_ij.norm() > 1e-12 {
-                let diff = log_t[(row, row)] - log_t[(col, col)];
-                if diff.norm() > 1e-10 {
-                    log_t[(row, col)] = t_ij / diff;
-                }
-            }
-        }
-    }
-
-    log_t
 }
 
 /// Matrix logarithm using inverse scaling and squaring method
@@ -335,8 +254,11 @@ pub fn matrix_logm(matrix: &[f64], n: usize) -> Vec<f64> {
     matrix_to_flat_complex(&log_m)
 }
 
-/// Matrix logarithm using eigendecomposition approach (via Schur decomposition)
-/// This is an alternative implementation for testing and comparison
+/// Matrix logarithm using complex Schur decomposition (for orthogonal matrices only)
+/// This is an alternative implementation for testing and comparison.
+///
+/// **Important**: This method only works correctly for orthogonal/unitary matrices.
+/// For non-orthogonal matrices, use matrix_logm() instead.
 #[wasm_bindgen]
 pub fn matrix_logm_eigen(matrix: &[f64], n: usize) -> Vec<f64> {
     let m = flat_to_matrix(matrix, n);
@@ -368,7 +290,9 @@ pub fn geodesic_distance(r: &[f64], t: &[f64], n: usize) -> f64 {
     log_u.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt()
 }
 
-/// Geodesic distance using eigendecomposition approach
+/// Geodesic distance using complex Schur decomposition (for orthogonal matrices only)
+///
+/// **Important**: This method only works correctly for orthogonal/unitary matrices.
 #[wasm_bindgen]
 pub fn geodesic_distance_eigen(r: &[f64], t: &[f64], n: usize) -> f64 {
     let r_mat = flat_to_matrix(r, n);
@@ -378,7 +302,7 @@ pub fn geodesic_distance_eigen(r: &[f64], t: &[f64], n: usize) -> f64 {
     let r_transpose = r_mat.transpose();
     let u = r_transpose * t_mat;
 
-    // log(U) using eigendecomposition
+    // log(U) using complex Schur decomposition
     let log_u = matrix_log_eigen(&u);
 
     // Frobenius norm
@@ -410,7 +334,9 @@ pub fn geodesic_interp(a: &[f64], b: &[f64], t: f64, n: usize) -> Vec<f64> {
     matrix_to_flat_real(&result)
 }
 
-/// Geodesic interpolation using eigendecomposition approach
+/// Geodesic interpolation using complex Schur decomposition (for orthogonal matrices only)
+///
+/// **Important**: This method only works correctly for orthogonal/unitary matrices.
 #[wasm_bindgen]
 pub fn geodesic_interp_eigen(a: &[f64], b: &[f64], t: f64, n: usize) -> Vec<f64> {
     let a_mat = flat_to_matrix(a, n);
@@ -420,7 +346,7 @@ pub fn geodesic_interp_eigen(a: &[f64], b: &[f64], t: f64, n: usize) -> Vec<f64>
     let a_transpose = a_mat.transpose();
     let r_rel = a_transpose * b_mat;
 
-    // log(R_rel) using eigendecomposition
+    // log(R_rel) using complex Schur decomposition
     let log_r = matrix_log_eigen(&r_rel);
 
     // t * log(R_rel)

@@ -1,16 +1,23 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Geodesic interpolation using eigendecomposition approach
+ * Geodesic interpolation using complex Schur decomposition (for orthogonal matrices only)
+ *
+ * **Important**: This method only works correctly for orthogonal/unitary matrices.
  */
 export function geodesic_interp_eigen(a: Float64Array, b: Float64Array, t: number, n: number): Float64Array;
 /**
- * Geodesic distance using eigendecomposition approach
+ * Geodesic distance using complex Schur decomposition (for orthogonal matrices only)
+ *
+ * **Important**: This method only works correctly for orthogonal/unitary matrices.
  */
 export function geodesic_distance_eigen(r: Float64Array, t: Float64Array, n: number): number;
 /**
- * Matrix logarithm using eigendecomposition approach (via Schur decomposition)
- * This is an alternative implementation for testing and comparison
+ * Matrix logarithm using complex Schur decomposition (for orthogonal matrices only)
+ * This is an alternative implementation for testing and comparison.
+ *
+ * **Important**: This method only works correctly for orthogonal/unitary matrices.
+ * For non-orthogonal matrices, use matrix_logm() instead.
  */
 export function matrix_logm_eigen(matrix: Float64Array, n: number): Float64Array;
 export function geodesic_interp(a: Float64Array, b: Float64Array, t: number, n: number): Float64Array;
