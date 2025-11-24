@@ -1810,10 +1810,23 @@ export class ScatterplotMatrix {
     
     if (!gradientInfo) return;
     
+    // Check if we need to flip the direction due to axis transposition
+    // Gradient is computed for plane (i,j) where i < j
+    // In cell (i,j): rotation from i→j is CW on screen
+    // In cell (j,i): rotation from i→j is CCW on screen (axes swapped)
+    const planeMatches = (gradientInfo.plane[0] === dimI && gradientInfo.plane[1] === dimJ);
+    const flipDirection = !planeMatches;
+    
     // Determine direction based on gradient sign
     // Negative gradient means rotating in the positive direction decreases distance
-    const direction = gradientInfo.gradient < 0 ? 'CW' : 'CCW';
-    const arrow = gradientInfo.gradient < 0 ? '↻' : '↺';
+    let direction = gradientInfo.gradient < 0 ? 'CW' : 'CCW';
+    let arrow = gradientInfo.gradient < 0 ? '↻' : '↺';
+    
+    // Flip if axes are transposed
+    if (flipDirection) {
+      direction = direction === 'CW' ? 'CCW' : 'CW';
+      arrow = arrow === '↻' ? '↺' : '↻';
+    }
     
     // Normalize by max absolute gradient for relative magnitude
     const maxAbsGrad = Math.max(...gradients.map(g => g.absGradient));
@@ -1865,10 +1878,23 @@ export class ScatterplotMatrix {
     
     if (!gradientInfo) return;
     
+    // Check if we need to flip the direction due to axis transposition
+    // Gradient is computed for plane (i,j) where i < j
+    // In cell (i,j): rotation from i→j is CW on screen
+    // In cell (j,i): rotation from i→j is CCW on screen (axes swapped)
+    const planeMatches = (gradientInfo.plane[0] === dimI && gradientInfo.plane[1] === dimJ);
+    const flipDirection = !planeMatches;
+    
     // Determine direction based on gradient sign
     // Negative gradient means rotating in the positive direction decreases distance
-    const direction = gradientInfo.gradient < 0 ? 'CW' : 'CCW';
-    const arrow = gradientInfo.gradient < 0 ? '↻' : '↺';
+    let direction = gradientInfo.gradient < 0 ? 'CW' : 'CCW';
+    let arrow = gradientInfo.gradient < 0 ? '↻' : '↺';
+    
+    // Flip if axes are transposed
+    if (flipDirection) {
+      direction = direction === 'CW' ? 'CCW' : 'CW';
+      arrow = arrow === '↻' ? '↺' : '↻';
+    }
     
     // Normalize by max absolute gradient for relative magnitude
     const maxAbsGrad = Math.max(...gradients.map(g => g.absGradient));
