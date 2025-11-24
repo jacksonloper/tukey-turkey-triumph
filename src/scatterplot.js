@@ -793,7 +793,7 @@ export class ScatterplotMatrix {
       ctx.arc(px, py, 5, 0, 2 * Math.PI);
       ctx.fill();
       
-      // Draw turkey features (wattle and simple head crest)
+      // Draw turkey features (simple head crest)
       ctx.beginPath();
       ctx.arc(px - 3, py - 4, 2, 0, 2 * Math.PI);
       ctx.arc(px + 3, py - 4, 2, 0, 2 * Math.PI);
