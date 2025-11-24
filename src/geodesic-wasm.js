@@ -16,15 +16,8 @@ export async function initWasm() {
   }
 
   try {
-    // Dynamic import of WASM module - use a variable to avoid static analysis issues
-    const wasmPath = '../wasm-logm/pkg/wasm_logm.js';
-    let wasm;
-    try {
-      wasm = await import(/* @vite-ignore */ wasmPath);
-    } catch (importError) {
-      console.warn('WASM module not found (expected if wasm-pack not installed)');
-      throw importError;
-    }
+    // Dynamic import of WASM module
+    const wasm = await import('../wasm-logm/pkg/wasm_logm.js');
 
     // For Node.js environment (tests), we need to load the WASM file manually
     if (typeof process !== 'undefined' && process.versions?.node) {
