@@ -1539,16 +1539,43 @@ export class ScatterplotMatrix {
       const point = points[idx];
       const [px, py] = projectPoint(point);
       
-      // Draw turkey as a filled circle with head features
+      // Draw turkey with proper turkey features
+      
+      // 1. Draw tail fan (behind the body)
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(px - 2, py);
+      ctx.arc(px - 2, py, 6, -Math.PI * 0.4, Math.PI * 0.4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+      
+      // 2. Draw body as a filled circle
       ctx.fillStyle = color;
       ctx.beginPath();
       ctx.arc(px, py, 5, 0, 2 * Math.PI);
       ctx.fill();
       
-      // Draw simple head crest
+      // 3. Draw head (small circle in front)
+      ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(px - 3, py - 4, 2, 0, 2 * Math.PI);
-      ctx.arc(px + 3, py - 4, 2, 0, 2 * Math.PI);
+      ctx.arc(px + 4, py - 2, 2.5, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      // 4. Draw beak (small triangle)
+      ctx.fillStyle = '#FFB347'; // Orange beak
+      ctx.beginPath();
+      ctx.moveTo(px + 6, py - 2);
+      ctx.lineTo(px + 8, py - 2);
+      ctx.lineTo(px + 7, py - 1);
+      ctx.closePath();
+      ctx.fill();
+      
+      // 5. Draw wattle (red dangly bit under head)
+      ctx.fillStyle = '#FF5555'; // Red wattle
+      ctx.beginPath();
+      ctx.arc(px + 5, py, 1.5, 0, 2 * Math.PI);
       ctx.fill();
       
       ctx.restore();
