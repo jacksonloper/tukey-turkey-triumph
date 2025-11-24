@@ -16,8 +16,15 @@ export async function initWasm() {
   }
 
   try {
-    // Dynamic import of WASM module
-    const wasm = await import('../wasm-logm/pkg/wasm_logm.js');
+    // Dynamic import of WASM module - use a variable to avoid static analysis issues
+    const wasmPath = '../wasm-logm/pkg/wasm_logm.js';
+    let wasm;
+    try {
+      wasm = await import(/* @vite-ignore */ wasmPath);
+    } catch (importError) {
+      console.warn('WASM module not found (expected if wasm-pack not installed)');
+      throw importError;
+    }
 
     // For Node.js environment (tests), we need to load the WASM file manually
     if (typeof process !== 'undefined' && process.versions?.node) {
@@ -30,8 +37,8 @@ export async function initWasm() {
       const __dirname = dirname(__filename);
 
       // Read the WASM file
-      const wasmPath = join(__dirname, '../wasm-logm/pkg/wasm_logm_bg.wasm');
-      const wasmBytes = readFileSync(wasmPath);
+      const wasmFilePath = join(__dirname, '../wasm-logm/pkg/wasm_logm_bg.wasm');
+      const wasmBytes = readFileSync(wasmFilePath);
 
       // Initialize with the bytes
       await wasm.default(wasmBytes);
@@ -45,7 +52,7 @@ export async function initWasm() {
     console.log('WASM logm module initialized successfully');
     return true;
   } catch (error) {
-    console.warn('Failed to initialize WASM module:', error);
+    console.warn('Failed to initialize WASM module:', error.message || error);
     console.warn('Falling back to mathjs implementation');
     return false;
   }
