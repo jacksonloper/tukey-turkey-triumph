@@ -7,7 +7,7 @@ dist/
 # Rust/WASM
 wasm-logm/target/
 wasm-logm/wasm-pack.log
-# Note: wasm-logm/pkg/ is committed for CI/CD (no Rust toolchain on Netlify)
+wasm-logm/pkg/
 
 # Editor directories and files
 .vscode/
