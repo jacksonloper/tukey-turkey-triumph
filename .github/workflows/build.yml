@@ -14,12 +14,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check for pre-built WASM
+        id: check-wasm
+        run: |
+          if [ -d "wasm-logm/pkg" ] && [ -f "wasm-logm/pkg/wasm_logm_bg.wasm" ]; then
+            echo "wasm_exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Pre-built WASM found - skipping Rust setup"
+          else
+            echo "wasm_exists=false" >> $GITHUB_OUTPUT
+            echo "❌ No pre-built WASM - will install Rust"
+          fi
+
       - name: Setup Rust
+        if: steps.check-wasm.outputs.wasm_exists != 'true'
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
 
       - name: Cache Rust dependencies
+        if: steps.check-wasm.outputs.wasm_exists != 'true'
         uses: actions/cache@v4
         with:
           path: |
@@ -31,6 +44,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install wasm-pack
+        if: steps.check-wasm.outputs.wasm_exists != 'true'
         run: command -v wasm-pack || cargo install wasm-pack --locked
 
       - name: Setup Node.js

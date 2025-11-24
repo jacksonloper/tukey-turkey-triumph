@@ -1,9 +1,22 @@
 #!/bin/bash
-# Netlify build script - installs Rust and wasm-pack, then builds the project
+# Netlify build script - installs Rust and wasm-pack only if needed, then builds the project
 
 set -e
 
-echo "=== Setting up Rust toolchain ==="
+# Check if WASM pkg directory already exists (committed to repo)
+if [ -d "wasm-logm/pkg" ] && [ -f "wasm-logm/pkg/wasm_logm_bg.wasm" ]; then
+  echo "=== WASM pkg/ directory found - skipping Rust installation ==="
+  echo "Using pre-built WASM artifacts from wasm-logm/pkg/"
+  
+  # Run npm build directly without Rust setup
+  echo "=== Building project ==="
+  npm run build
+  
+  echo "=== Build complete ==="
+  exit 0
+fi
+
+echo "=== WASM pkg/ not found - setting up Rust toolchain ==="
 
 # Ensure cargo is in PATH
 export PATH="$HOME/.cargo/bin:$PATH"
