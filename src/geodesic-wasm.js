@@ -30,8 +30,8 @@ export async function initWasm() {
       const __dirname = dirname(__filename);
 
       // Read the WASM file
-      const wasmPath = join(__dirname, '../wasm-logm/pkg/wasm_logm_bg.wasm');
-      const wasmBytes = readFileSync(wasmPath);
+      const wasmFilePath = join(__dirname, '../wasm-logm/pkg/wasm_logm_bg.wasm');
+      const wasmBytes = readFileSync(wasmFilePath);
 
       // Initialize with the bytes
       await wasm.default(wasmBytes);
@@ -45,7 +45,7 @@ export async function initWasm() {
     console.log('WASM logm module initialized successfully');
     return true;
   } catch (error) {
-    console.warn('Failed to initialize WASM module:', error);
+    console.warn('Failed to initialize WASM module:', error.message || error);
     console.warn('Falling back to mathjs implementation');
     return false;
   }
