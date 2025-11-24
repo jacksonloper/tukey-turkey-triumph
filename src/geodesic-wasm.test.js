@@ -3,7 +3,12 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initWasm, geodesicDistanceWasm, geodesicInterpWasm, isWasmAvailable } from './geodesic-wasm.js';
+import { 
+  initWasm, 
+  geodesicDistanceWasm, 
+  geodesicInterpWasm, 
+  isWasmAvailable 
+} from './geodesic-wasm.js';
 import { geodesicDistanceArray, geodesicInterpArray } from './geodesic.js';
 
 describe('WASM Geodesic Functions', () => {

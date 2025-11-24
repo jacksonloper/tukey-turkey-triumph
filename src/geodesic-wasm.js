@@ -84,6 +84,9 @@ function flatToMatrix(flat, n) {
 
 /**
  * Geodesic distance between two rotation matrices using WASM
+ * 
+ * **Important**: This method only works correctly for orthogonal matrices.
+ * 
  * @param {Array} R - 2D array representing first rotation matrix
  * @param {Array} T - 2D array representing second rotation matrix
  * @returns {number} geodesic distance
@@ -102,6 +105,9 @@ export function geodesicDistanceWasm(R, T) {
 
 /**
  * Geodesic interpolation between two rotations using WASM
+ * 
+ * **Important**: This method only works correctly for orthogonal matrices.
+ * 
  * @param {Array} A - 2D array representing start rotation matrix
  * @param {Array} B - 2D array representing end rotation matrix
  * @param {number} t - interpolation parameter (0 = A, 1 = B)
@@ -122,6 +128,9 @@ export function geodesicInterpWasm(A, B, t) {
 
 /**
  * Matrix logarithm using WASM
+ * 
+ * **Important**: This method only works correctly for orthogonal matrices.
+ * 
  * Returns complex matrix as [real, imag] pairs
  * @param {Array} M - 2D array representing matrix
  * @returns {Array} Flat array with interleaved [real, imag] values

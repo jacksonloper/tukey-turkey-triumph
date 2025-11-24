@@ -92,15 +92,43 @@ tukeys-turkey-triumph/
 
 ## Installation
 
+### Prerequisites
+
+For development, you'll need:
+- Node.js (for the web application)
+- Rust toolchain (for building the WASM module)
+- wasm-pack (for compiling Rust to WebAssembly)
+
+To install Rust and wasm-pack:
 ```bash
-# Development server
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Install wasm-pack
+cargo install wasm-pack
+```
+
+### Building
+
+```bash
+# Install dependencies
 npm install
+
+# Build WASM module and run development server
 npm run dev
 
-# Production build
+# Production build (builds WASM, then creates optimized bundle)
 npm run build
 npm run preview
 ```
+
+### Deployment
+
+For deployment platforms like Netlify, the repository includes:
+- `netlify.toml` - Netlify configuration
+- `netlify-build.sh` - Build script that installs Rust and wasm-pack automatically
+
+The WASM build is performed automatically during `npm run build` via the `build:wasm` script.
 
 ## Mathematical Notes
 - N-dimensional rotations operate in planes (i, j). We apply rotations in the current local basis; swapping (i, j) flips direction.
@@ -127,7 +155,30 @@ The geodesic distance is computed as:
 d(R, T) = || log(R^* T) ||_F
 ```
 
-where `log` is the matrix logarithm for unitary/orthogonal matrices, computed using the inverse scaling and squaring method with Taylor series expansion.
+where `log` is the matrix logarithm for unitary/orthogonal matrices.
+
+**WASM-Accelerated Implementation:** The project includes a high-performance Rust/WebAssembly implementation with two matrix logarithm algorithms:
+
+1. **Scaling and Squaring Method** (default) - More numerically stable
+2. **Eigendecomposition Method** (new) - Uses nalgebra's Schur decomposition for a more direct approach
+
+```javascript
+import { 
+  initWasm, 
+  geodesicDistanceWasm, 
+  geodesicDistanceWasmEigen 
+} from './src/geodesic-wasm.js';
+
+await initWasm();
+
+// Standard method (scaling and squaring)
+const dist1 = geodesicDistanceWasm(R1, R2);
+
+// Eigendecomposition method
+const dist2 = geodesicDistanceWasmEigen(R1, R2);
+```
+
+Both methods provide consistent results. See `wasm-logm/README.md` for details on the algorithms and `src/geodesic-wasm.test.js` for usage examples.
 
 The derivative function computes:
 ```
@@ -136,7 +187,7 @@ d/dε [d(H(ε), T)]_{ε=0}  where  H(ε) = R exp(ε K)
 
 This uses central finite differences for numerical differentiation. See `src/geodesic-example.js` for usage examples.
 
-**Dependencies:** The geodesic functions use a fork of `mathjs` with `logm` (matrix logarithm) support, included as a local dependency.
+**Dependencies:** The geodesic functions use a fork of `mathjs` with `logm` (matrix logarithm) support, included as a local dependency. The WASM module requires Rust and wasm-pack for building.
 
 ## Credits
 - Inspired by John W. Tukey's exploratory data analysis
