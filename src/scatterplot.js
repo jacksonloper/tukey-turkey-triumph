@@ -456,7 +456,7 @@ export class ScatterplotMatrix {
           label: pathData.label,
           numbered: pathData.numbered,
           numDots: pathData.numDots,
-          squirrel: pathData.squirrel,
+          turkey: pathData.turkey,
           progress: pathData.progress,
           arcLengths: pathData.arcLengths,
           fixed: true  // IMPORTANT: Preserve the fixed property!
@@ -472,7 +472,7 @@ export class ScatterplotMatrix {
           label: pathData.label,
           numbered: pathData.numbered,
           numDots: pathData.numDots,
-          squirrel: pathData.squirrel,
+          turkey: pathData.turkey,
           progress: pathData.progress,
           arcLengths: pathData.arcLengths,
           fixed: false  // IMPORTANT: Preserve the fixed property!
@@ -668,7 +668,7 @@ export class ScatterplotMatrix {
   drawPathSeparate(ctx, cellX, cellY, cellWidth, cellHeight, pathData, dimI, dimJ) {
     const viewRange = this.gridRange;
 
-    const { points, color, numbered, numDots = 6, squirrel, progress = 0, arcLengths } = pathData;
+    const { points, color, numbered, numDots = 6, turkey, progress = 0, arcLengths } = pathData;
 
     // Helper to project point to screen coordinates
     const projectPoint = (point) => {
@@ -744,8 +744,8 @@ export class ScatterplotMatrix {
       return;
     }
 
-    // Squirrel mode
-    if (squirrel) {
+    // Turkey mode
+    if (turkey) {
       ctx.save();
       
       ctx.strokeStyle = color.replace('0.8', '0.3');
@@ -793,6 +793,7 @@ export class ScatterplotMatrix {
       ctx.arc(px, py, 5, 0, 2 * Math.PI);
       ctx.fill();
       
+      // Draw turkey features (wattle and simple head crest)
       ctx.beginPath();
       ctx.arc(px - 3, py - 4, 2, 0, 2 * Math.PI);
       ctx.arc(px + 3, py - 4, 2, 0, 2 * Math.PI);
@@ -849,7 +850,7 @@ export class ScatterplotMatrix {
     const ctx = this.ctx;
     const viewRange = this.gridRange;
 
-    const { points, color, numbered, numDots = 6, squirrel, progress = 0, arcLengths } = pathData;
+    const { points, color, numbered, numDots = 6, turkey, progress = 0, arcLengths } = pathData;
 
     // Helper to project point to screen coordinates
     const projectPoint = (point) => {
@@ -925,8 +926,8 @@ export class ScatterplotMatrix {
       return;
     }
 
-    // Squirrel mode
-    if (squirrel) {
+    // Turkey mode
+    if (turkey) {
       ctx.save();
       
       ctx.strokeStyle = color.replace('0.8', '0.3');
@@ -1406,7 +1407,7 @@ export class ScatterplotMatrix {
     const startY = cellY + this.cellPadding;
     const viewRange = this.gridRange;
 
-    const { points, color, numbered, numDots = 6, squirrel, progress = 0, arcLengths } = pathData;
+    const { points, color, numbered, numDots = 6, turkey, progress = 0, arcLengths } = pathData;
 
     // Helper to project point to screen coordinates
     const projectPoint = (point) => {
@@ -1487,8 +1488,8 @@ export class ScatterplotMatrix {
       return;
     }
 
-    // Squirrel mode - show animated marker
-    if (squirrel) {
+    // Turkey mode - show animated marker
+    if (turkey) {
       ctx.save();
       
       // Draw faint path line
@@ -1510,7 +1511,7 @@ export class ScatterplotMatrix {
       }
       ctx.stroke();
 
-      // Draw animated squirrel marker
+      // Draw animated turkey marker
       // Use arc length parameterization for constant speed
       let idx;
       if (arcLengths && arcLengths.length > 0) {
@@ -1538,13 +1539,13 @@ export class ScatterplotMatrix {
       const point = points[idx];
       const [px, py] = projectPoint(point);
       
-      // Draw squirrel as a filled circle with ears
+      // Draw turkey as a filled circle with head features
       ctx.fillStyle = color;
       ctx.beginPath();
       ctx.arc(px, py, 5, 0, 2 * Math.PI);
       ctx.fill();
       
-      // Draw simple ears
+      // Draw simple head crest
       ctx.beginPath();
       ctx.arc(px - 3, py - 4, 2, 0, 2 * Math.PI);
       ctx.arc(px + 3, py - 4, 2, 0, 2 * Math.PI);

@@ -38,12 +38,12 @@ export class RotationChallenge {
     this.originalPath = null;
     this.targetPath = null;
     
-    // Arc lengths for squirrel animation (constant speed along path)
+    // Arc lengths for turkey animation (constant speed along path)
     this.arcLengths = null;
     this.totalArcLength = 0;
 
     // Display settings
-    this.displayMode = 'vanilla'; // 'vanilla', 'rainbow', 'numbered', 'squirrel'
+    this.displayMode = 'turkey'; // 'vanilla', 'rainbow', 'numbered', 'turkey'
     this.gridEnabled = false;
     this.mobileViewEnabled = false;
     this.mobileOverlayEnabled = false;
@@ -73,9 +73,9 @@ export class RotationChallenge {
     this.halfwayStartOrientation = null;
     this.halfwayTargetOrientation = null;
 
-    // Squirrel mode animation state
-    this.squirrelProgress = 0; // 0 to 1, in terms of arc length
-    this.squirrelDuration = 6.0; // seconds to traverse whole path
+    // Turkey mode animation state
+    this.turkeyProgress = 0; // 0 to 1, in terms of arc length
+    this.turkeyDuration = 6.0; // seconds to traverse whole path
 
     // Rendering
     this.scatterplot = new ScatterplotMatrix(canvas, dimensions);
@@ -156,7 +156,7 @@ export class RotationChallenge {
     // Resample to have evenly-spaced points (eliminates jittering)
     this.originalPath = resamplePathUniformly(rawPath, 100);
 
-    // Compute arc lengths for constant-speed squirrel animation
+    // Compute arc lengths for constant-speed turkey animation
     this.arcLengths = computeArcLengths(this.originalPath);
     this.totalArcLength = this.arcLengths[this.arcLengths.length - 1];
 
@@ -181,10 +181,10 @@ export class RotationChallenge {
    * Update game state
    */
   update(dt) {
-    // Update squirrel animation progress (arc-length based, constant speed)
-    if (this.displayMode === 'squirrel') {
-      this.squirrelProgress += dt / this.squirrelDuration;
-      this.squirrelProgress = this.squirrelProgress % 1.0; // Keep in [0,1)
+    // Update turkey animation progress (arc-length based, constant speed)
+    if (this.displayMode === 'turkey') {
+      this.turkeyProgress += dt / this.turkeyDuration;
+      this.turkeyProgress = this.turkeyProgress % 1.0; // Keep in [0,1)
     }
 
     // Handle halfway animation (takes precedence over manual rotation)
@@ -309,8 +309,8 @@ export class RotationChallenge {
         { points: this.originalPath, color: 'rgba(255, 140, 0, 0.8)', label: 'original', fixed: true, numbered: true, numDots: 6 },
         { points: this.targetPath, color: 'rgba(0, 255, 255, 0.8)', label: 'target', fixed: false, numbered: true, numDots: 6 }
       ];
-    } else if (this.displayMode === 'squirrel') {
-      // Squirrel mode - show animated markers moving along paths
+    } else if (this.displayMode === 'turkey') {
+      // Turkey mode - show animated markers moving along paths
       // Pass arc length data for constant-speed animation
       pathsToRender = [
         { 
@@ -318,8 +318,8 @@ export class RotationChallenge {
           color: 'rgba(255, 140, 0, 0.8)', 
           label: 'original', 
           fixed: true, 
-          squirrel: true, 
-          progress: this.squirrelProgress,
+          turkey: true, 
+          progress: this.turkeyProgress,
           arcLengths: this.arcLengths 
         },
         { 
@@ -327,8 +327,8 @@ export class RotationChallenge {
           color: 'rgba(0, 255, 255, 0.8)', 
           label: 'target', 
           fixed: false, 
-          squirrel: true, 
-          progress: this.squirrelProgress,
+          turkey: true, 
+          progress: this.turkeyProgress,
           arcLengths: this.arcLengths 
         }
       ];

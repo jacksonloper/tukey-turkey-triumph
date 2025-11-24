@@ -23,10 +23,15 @@
     <div id="app">
       <header>
         <h1>Rotation Matching Challenge</h1>
-        <p class="subtitle" id="subtitle">Align the Curves • Master SO(n) • Find the Hidden Rotation</p>
+        <p class="subtitle" id="subtitle">Unite the Turkeys in Love • Master SO(n) • Find the Hidden Rotation</p>
       </header>
       <div class="game-container">
         <div class="about">
+          <p>
+            <strong>The Story:</strong> Two turkeys have fallen deeply in love and want to travel together through space, but they're on different paths! 
+            The orange turkey follows the original path, while the cyan turkey's path has been mysteriously rotated. 
+            Your mission is to rotate the cyan turkey's path until it perfectly aligns with the orange turkey's path, so these two can finally journey together. ❤️🦃
+          </p>
           <p>
             <strong>The Challenge:</strong> Two smooth curves are displayed in $\mathbb{R}^n$ (on the sphere $S^{n-1}$ for $n \geq 3$, inside the ball for $n=2$).
             The orange curve (fixed) is the original path. The cyan curve (rotating) is the same path rotated by a secret matrix $R \in \text{SO}(n)$
@@ -51,7 +56,7 @@
         <div class="controls-section">
           <div class="section-title">Challenge Controls</div>
           <div class="divider"></div>
-          <div class="goal-callout"><strong>Goal:</strong> Minimize the distance to align the cyan curve with the orange curve</div>
+          <div class="goal-callout"><strong>Goal:</strong> Help the turkeys unite by rotating the cyan path to align with the orange path</div>
           <div class="instructions instructions-top">
             <p><strong>Rotate:</strong> Hold on any off-diagonal cell (i, j) to rotate in that plane</p>
             <p><strong>Auto-Rotate:</strong> Automatically rotate partway toward the solution</p>
@@ -69,10 +74,10 @@
           <div class="display-mode-selector">
             <label for="display-mode-select">Display Mode:</label>
             <select id="display-mode-select">
-              <option value="vanilla" selected>Vanilla</option>
+              <option value="turkey" selected>Turkey</option>
+              <option value="vanilla">Vanilla</option>
               <option value="rainbow">Rainbow</option>
               <option value="numbered">Numbered</option>
-              <option value="squirrel">Squirrel</option>
             </select>
           </div>
           <div class="grid-toggle">
