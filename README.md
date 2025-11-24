@@ -92,15 +92,43 @@ tukeys-turkey-triumph/
 
 ## Installation
 
+### Prerequisites
+
+For development, you'll need:
+- Node.js (for the web application)
+- Rust toolchain (for building the WASM module)
+- wasm-pack (for compiling Rust to WebAssembly)
+
+To install Rust and wasm-pack:
 ```bash
-# Development server
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Install wasm-pack
+cargo install wasm-pack
+```
+
+### Building
+
+```bash
+# Install dependencies
 npm install
+
+# Build WASM module and run development server
 npm run dev
 
-# Production build
+# Production build (builds WASM, then creates optimized bundle)
 npm run build
 npm run preview
 ```
+
+### Deployment
+
+For deployment platforms like Netlify, the repository includes:
+- `netlify.toml` - Netlify configuration
+- `netlify-build.sh` - Build script that installs Rust and wasm-pack automatically
+
+The WASM build is performed automatically during `npm run build` via the `build:wasm` script.
 
 ## Mathematical Notes
 - N-dimensional rotations operate in planes (i, j). We apply rotations in the current local basis; swapping (i, j) flips direction.
