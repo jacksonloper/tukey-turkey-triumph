@@ -84,6 +84,9 @@ function flatToMatrix(flat, n) {
 
 /**
  * Geodesic distance between two rotation matrices using WASM
+ * 
+ * **Important**: This method only works correctly for orthogonal matrices.
+ * 
  * @param {Array} R - 2D array representing first rotation matrix
  * @param {Array} T - 2D array representing second rotation matrix
  * @returns {number} geodesic distance
@@ -101,25 +104,10 @@ export function geodesicDistanceWasm(R, T) {
 }
 
 /**
- * Geodesic distance using eigendecomposition approach
- * @param {Array} R - 2D array representing first rotation matrix
- * @param {Array} T - 2D array representing second rotation matrix
- * @returns {number} geodesic distance
- */
-export function geodesicDistanceWasmEigen(R, T) {
-  if (!wasmInitialized) {
-    throw new Error('WASM module not initialized. Call initWasm() first.');
-  }
-
-  const n = R.length;
-  const R_flat = matrixToFlat(R);
-  const T_flat = matrixToFlat(T);
-
-  return wasmModule.geodesic_distance_eigen(R_flat, T_flat, n);
-}
-
-/**
  * Geodesic interpolation between two rotations using WASM
+ * 
+ * **Important**: This method only works correctly for orthogonal matrices.
+ * 
  * @param {Array} A - 2D array representing start rotation matrix
  * @param {Array} B - 2D array representing end rotation matrix
  * @param {number} t - interpolation parameter (0 = A, 1 = B)
@@ -139,27 +127,10 @@ export function geodesicInterpWasm(A, B, t) {
 }
 
 /**
- * Geodesic interpolation using eigendecomposition approach
- * @param {Array} A - 2D array representing start rotation matrix
- * @param {Array} B - 2D array representing end rotation matrix
- * @param {number} t - interpolation parameter (0 = A, 1 = B)
- * @returns {Array} 2D array representing interpolated rotation
- */
-export function geodesicInterpWasmEigen(A, B, t) {
-  if (!wasmInitialized) {
-    throw new Error('WASM module not initialized. Call initWasm() first.');
-  }
-
-  const n = A.length;
-  const A_flat = matrixToFlat(A);
-  const B_flat = matrixToFlat(B);
-
-  const result_flat = wasmModule.geodesic_interp_eigen(A_flat, B_flat, t, n);
-  return flatToMatrix(result_flat, n);
-}
-
-/**
  * Matrix logarithm using WASM
+ * 
+ * **Important**: This method only works correctly for orthogonal matrices.
+ * 
  * Returns complex matrix as [real, imag] pairs
  * @param {Array} M - 2D array representing matrix
  * @returns {Array} Flat array with interleaved [real, imag] values
@@ -173,23 +144,6 @@ export function matrixLogmWasm(M) {
   const M_flat = matrixToFlat(M);
 
   return wasmModule.matrix_logm(M_flat, n);
-}
-
-/**
- * Matrix logarithm using eigendecomposition approach
- * Returns complex matrix as [real, imag] pairs
- * @param {Array} M - 2D array representing matrix
- * @returns {Array} Flat array with interleaved [real, imag] values
- */
-export function matrixLogmWasmEigen(M) {
-  if (!wasmInitialized) {
-    throw new Error('WASM module not initialized. Call initWasm() first.');
-  }
-
-  const n = M.length;
-  const M_flat = matrixToFlat(M);
-
-  return wasmModule.matrix_logm_eigen(M_flat, n);
 }
 
 /**
