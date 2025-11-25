@@ -93,6 +93,8 @@ export class RotationChallenge {
     this.frameCount = 0;
     this.lastFpsUpdate = performance.now();
     this.currentFps = 0;
+    this.frameTimes = []; // Track last 60 frame times
+    this.lastFrameStart = performance.now();
 
     // Initialize FPS display
     if (this.fpsDisplayEl) {
@@ -512,15 +514,37 @@ export class RotationChallenge {
     this.lastTime = currentTime;
 
     this.update(dt);
+
+    const renderStart = performance.now();
     this.render();
+    const renderTime = performance.now() - renderStart;
+
+    // Track frame times for performance analysis
+    this.frameTimes.push(renderTime);
+    if (this.frameTimes.length > 60) {
+      this.frameTimes.shift();
+    }
 
     // Update FPS counter
     this.frameCount++;
     if (currentTime - this.lastFpsUpdate >= 500) {
       this.currentFps = Math.round(this.frameCount / ((currentTime - this.lastFpsUpdate) / 1000));
+
+      // Calculate average render time and frame budget
+      const avgRenderTime = this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length;
+      const maxRenderTime = Math.max(...this.frameTimes);
+
       if (this.fpsDisplayEl) {
-        this.fpsDisplayEl.textContent = this.currentFps;
+        // Show FPS and render time
+        this.fpsDisplayEl.textContent = `${this.currentFps} (${avgRenderTime.toFixed(1)}ms)`;
+
+        // Log performance warnings to console
+        const frameBudget = 1000 / this.currentFps;
+        if (maxRenderTime > frameBudget * 0.9) {
+          console.warn(`Frame budget exceeded: ${maxRenderTime.toFixed(1)}ms > ${frameBudget.toFixed(1)}ms budget`);
+        }
       }
+
       this.frameCount = 0;
       this.lastFpsUpdate = currentTime;
     }
