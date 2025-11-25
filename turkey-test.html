@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Turkey Animation Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #1a1a1a;
+      color: #fff;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .container {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    canvas {
+      border: 2px solid #646cff;
+      background: #000;
+      border-radius: 8px;
+      will-change: contents;
+      transform: translateZ(0);
+    }
+
+    .controls {
+      background: #2a2a2a;
+      padding: 20px;
+      border-radius: 8px;
+      min-width: 300px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .control-group label {
+      font-weight: bold;
+      font-size: 14px;
+      color: #646cff;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      padding: 10px 20px;
+      background: #646cff;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex: 1;
+    }
+
+    button:hover {
+      background: #535bf2;
+    }
+
+    button:active {
+      background: #4248c7;
+    }
+
+    button.active {
+      background: #ff6b6b;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #444;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #646cff;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #646cff;
+      cursor: pointer;
+      border: none;
+    }
+
+    .stat {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px;
+      background: #1a1a1a;
+      border-radius: 4px;
+    }
+
+    .stat-value {
+      color: #646cff;
+      font-weight: bold;
+    }
+
+    .info {
+      font-size: 12px;
+      color: #888;
+      text-align: center;
+    }
+
+    input[type="number"] {
+      width: 80px;
+      padding: 6px;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: white;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🦃 Turkey Animation Test</h1>
+  <p class="info">Test turkey movement around a perfect circle with rotation controls</p>
+
+  <div class="container">
+    <canvas id="canvas" width="600" height="600"></canvas>
+
+    <div class="controls">
+      <div class="control-group">
+        <label>Rotation Control</label>
+        <div class="button-group">
+          <button id="btn-ccw">CCW ⟲</button>
+          <button id="btn-stop">STOP</button>
+          <button id="btn-cw">CW ⟳</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label>Turkey Speed: <span id="turkey-speed-value">1.0</span> rev/sec</label>
+        <input type="range" id="turkey-speed" min="0" max="5" step="0.1" value="1.0">
+      </div>
+
+      <div class="control-group">
+        <label>Rotation Speed: <span id="rotation-speed-value">45</span> deg/sec</label>
+        <input type="range" id="rotation-speed" min="0" max="180" step="5" value="45">
+      </div>
+
+      <div class="control-group">
+        <label>Target FPS</label>
+        <input type="number" id="target-fps" min="1" max="120" value="60">
+      </div>
+
+      <div class="control-group">
+        <label>Circle Points</label>
+        <input type="number" id="circle-points" min="10" max="500" value="100">
+      </div>
+
+      <div class="control-group">
+        <label>Stats</label>
+        <div class="stat">
+          <span>FPS:</span>
+          <span class="stat-value" id="fps">60</span>
+        </div>
+        <div class="stat">
+          <span>Frame Time:</span>
+          <span class="stat-value" id="frame-time">16ms</span>
+        </div>
+        <div class="stat">
+          <span>Turkey Progress:</span>
+          <span class="stat-value" id="progress">0.0</span>
+        </div>
+        <div class="stat">
+          <span>View Angle:</span>
+          <span class="stat-value" id="angle">0°</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', {
+      alpha: false,
+      desynchronized: true
+    });
+
+    // Scale for retina displays
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = 600 * dpr;
+    canvas.height = 600 * dpr;
+    canvas.style.width = '600px';
+    canvas.style.height = '600px';
+    ctx.scale(dpr, dpr);
+
+    // State
+    let turkeyProgress = 0; // 0 to 1 around the circle
+    let viewAngle = 0; // rotation angle in radians
+    let rotationState = 0; // -1 = CCW, 0 = stop, 1 = CW
+    let turkeySpeed = 1.0; // revolutions per second
+    let rotationSpeed = 45; // degrees per second
+    let targetFPS = 60;
+    let circlePoints = 100;
+
+    // FPS tracking
+    let frameCount = 0;
+    let lastFpsUpdate = performance.now();
+    let fps = 60;
+    let lastFrameTime = 0;
+
+    // Generate circle points
+    function generateCircle(numPoints, radius) {
+      const points = [];
+      for (let i = 0; i < numPoints; i++) {
+        const angle = (i / numPoints) * Math.PI * 2;
+        points.push([
+          Math.cos(angle) * radius,
+          Math.sin(angle) * radius
+        ]);
+      }
+      return points;
+    }
+
+    let circleRadius = 200;
+    let circlePointsArray = generateCircle(circlePoints, circleRadius);
+
+    // Get turkey position with interpolation
+    function getTurkeyPosition(progress, points) {
+      const totalPoints = points.length;
+      const floatIndex = progress * totalPoints;
+      const idx = Math.floor(floatIndex) % totalPoints;
+      const nextIdx = (idx + 1) % totalPoints;
+      const t = floatIndex - Math.floor(floatIndex);
+
+      const p0 = points[idx];
+      const p1 = points[nextIdx];
+
+      return [
+        p0[0] + t * (p1[0] - p0[0]),
+        p0[1] + t * (p1[1] - p0[1])
+      ];
+    }
+
+    // Rotate a 2D point
+    function rotatePoint(point, angle) {
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      return [
+        point[0] * cos - point[1] * sin,
+        point[0] * sin + point[1] * cos
+      ];
+    }
+
+    // Draw turkey sprite
+    function drawTurkey(ctx, x, y, color) {
+      ctx.save();
+
+      // 1. Draw tail fan (behind the body)
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(x - 2, y);
+      ctx.arc(x - 2, y, 6, -Math.PI * 0.4, Math.PI * 0.4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+
+      // 2. Draw body as a filled circle
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, 2 * Math.PI);
+      ctx.fill();
+
+      // 3. Draw head (small circle in front)
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(x + 4, y - 2, 2.5, 0, 2 * Math.PI);
+      ctx.fill();
+
+      // 4. Draw beak (small triangle)
+      ctx.fillStyle = '#FFB347'; // Orange beak
+      ctx.beginPath();
+      ctx.moveTo(x + 6, y - 2);
+      ctx.lineTo(x + 8, y - 2);
+      ctx.lineTo(x + 7, y - 1);
+      ctx.closePath();
+      ctx.fill();
+
+      // 5. Draw wattle (red dangly bit under head)
+      ctx.fillStyle = '#FF5555'; // Red wattle
+      ctx.beginPath();
+      ctx.arc(x + 5, y, 1.5, 0, 2 * Math.PI);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    // Draw scene
+    function draw() {
+      // Clear canvas
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, 600, 600);
+
+      // Center coordinate system
+      ctx.save();
+      ctx.translate(300, 300);
+
+      // Draw circle path
+      ctx.strokeStyle = 'rgba(100, 108, 255, 0.3)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < circlePointsArray.length; i++) {
+        const point = rotatePoint(circlePointsArray[i], viewAngle);
+        if (i === 0) {
+          ctx.moveTo(point[0], point[1]);
+        } else {
+          ctx.lineTo(point[0], point[1]);
+        }
+      }
+      ctx.closePath();
+      ctx.stroke();
+
+      // Draw circle points (to visualize discrete points)
+      ctx.fillStyle = 'rgba(100, 108, 255, 0.5)';
+      for (let i = 0; i < circlePointsArray.length; i++) {
+        const point = rotatePoint(circlePointsArray[i], viewAngle);
+        ctx.beginPath();
+        ctx.arc(point[0], point[1], 2, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+
+      // Get turkey position and rotate it
+      const turkeyPos = getTurkeyPosition(turkeyProgress, circlePointsArray);
+      const rotatedPos = rotatePoint(turkeyPos, viewAngle);
+
+      // Draw turkey
+      drawTurkey(ctx, rotatedPos[0], rotatedPos[1], 'rgba(255, 140, 0, 0.9)');
+
+      // Draw center cross
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-10, 0);
+      ctx.lineTo(10, 0);
+      ctx.moveTo(0, -10);
+      ctx.lineTo(0, 10);
+      ctx.stroke();
+
+      ctx.restore();
+
+      // Draw reference axis
+      ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(300, 300);
+      const axisLength = 150;
+      const axisAngle = viewAngle;
+      ctx.lineTo(300 + Math.cos(axisAngle) * axisLength, 300 + Math.sin(axisAngle) * axisLength);
+      ctx.stroke();
+    }
+
+    // Update state
+    function update(dt) {
+      // Update turkey progress
+      turkeyProgress += (turkeySpeed * dt);
+      turkeyProgress = turkeyProgress % 1.0;
+
+      // Update view rotation
+      const rotationRadPerSec = (rotationSpeed * Math.PI / 180);
+      viewAngle += rotationState * rotationRadPerSec * dt;
+      viewAngle = viewAngle % (2 * Math.PI);
+
+      // Update stats
+      document.getElementById('progress').textContent = turkeyProgress.toFixed(3);
+      document.getElementById('angle').textContent = ((viewAngle * 180 / Math.PI) % 360).toFixed(1) + '°';
+    }
+
+    // Game loop
+    let lastTime = performance.now();
+    let frameDelay = 1000 / targetFPS;
+    let accumulated = 0;
+
+    function gameLoop(currentTime) {
+      const elapsed = currentTime - lastTime;
+      lastTime = currentTime;
+
+      accumulated += elapsed;
+
+      // FPS limiting
+      if (accumulated >= frameDelay) {
+        const dt = accumulated / 1000;
+        accumulated = 0;
+
+        update(dt);
+        draw();
+
+        // FPS calculation
+        frameCount++;
+        const frameDuration = currentTime - lastFrameTime;
+        lastFrameTime = currentTime;
+
+        if (currentTime - lastFpsUpdate >= 500) {
+          fps = Math.round(frameCount / ((currentTime - lastFpsUpdate) / 1000));
+          document.getElementById('fps').textContent = fps;
+          document.getElementById('frame-time').textContent = frameDuration.toFixed(1) + 'ms';
+          frameCount = 0;
+          lastFpsUpdate = currentTime;
+        }
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Controls
+    const btnCCW = document.getElementById('btn-ccw');
+    const btnStop = document.getElementById('btn-stop');
+    const btnCW = document.getElementById('btn-cw');
+
+    function updateButtonStates() {
+      btnCCW.classList.toggle('active', rotationState === -1);
+      btnStop.classList.toggle('active', rotationState === 0);
+      btnCW.classList.toggle('active', rotationState === 1);
+    }
+
+    btnCCW.addEventListener('click', () => {
+      rotationState = -1;
+      updateButtonStates();
+    });
+
+    btnStop.addEventListener('click', () => {
+      rotationState = 0;
+      updateButtonStates();
+    });
+
+    btnCW.addEventListener('click', () => {
+      rotationState = 1;
+      updateButtonStates();
+    });
+
+    document.getElementById('turkey-speed').addEventListener('input', (e) => {
+      turkeySpeed = parseFloat(e.target.value);
+      document.getElementById('turkey-speed-value').textContent = turkeySpeed.toFixed(1);
+    });
+
+    document.getElementById('rotation-speed').addEventListener('input', (e) => {
+      rotationSpeed = parseFloat(e.target.value);
+      document.getElementById('rotation-speed-value').textContent = rotationSpeed.toFixed(0);
+    });
+
+    document.getElementById('target-fps').addEventListener('input', (e) => {
+      targetFPS = parseInt(e.target.value);
+      frameDelay = 1000 / targetFPS;
+    });
+
+    document.getElementById('circle-points').addEventListener('input', (e) => {
+      circlePoints = parseInt(e.target.value);
+      circlePointsArray = generateCircle(circlePoints, circleRadius);
+    });
+
+    // Initialize
+    updateButtonStates();
+    gameLoop(performance.now());
+  </script>
+</body>
+</html>
