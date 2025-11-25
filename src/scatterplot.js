@@ -788,39 +788,55 @@ export class ScatterplotMatrix {
       }
       ctx.stroke();
 
-      let idx;
+      // Draw animated turkey marker with interpolation
+      let point;
       if (arcLengths && arcLengths.length > 0) {
+        // Find point index based on arc length progress
         const totalLength = arcLengths[arcLengths.length - 1];
         const targetLength = progress * totalLength;
-        
-        idx = 0;
+
+        // Binary search for the right segment
+        let idx = 0;
         for (let i = 0; i < arcLengths.length - 1; i++) {
           if (arcLengths[i] <= targetLength && targetLength < arcLengths[i + 1]) {
             idx = i;
             break;
           }
         }
+
+        // Handle edge case where we're at the very end
         if (targetLength >= totalLength - 0.001) {
-          idx = points.length - 1;
+          point = points[points.length - 1];
+        } else {
+          // Interpolate between points[idx] and points[idx+1]
+          const segmentStart = arcLengths[idx];
+          const segmentEnd = arcLengths[idx + 1];
+          const segmentLength = segmentEnd - segmentStart;
+          const t = segmentLength > 0 ? (targetLength - segmentStart) / segmentLength : 0;
+
+          // Linear interpolation in N-dimensional space
+          const p0 = points[idx];
+          const p1 = points[idx + 1];
+          point = p0.map((coord, i) => coord + t * (p1[i] - coord));
         }
       } else {
-        idx = Math.floor(progress * (points.length - 1));
+        // Fallback to simple linear interpolation
+        const idx = Math.floor(progress * (points.length - 1));
+        point = points[idx];
       }
-      
-      const point = points[idx];
+
       const [px, py] = projectPoint(point);
-      
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(px, py, 5, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      // Draw turkey features (simple head crest)
-      ctx.beginPath();
-      ctx.arc(px - 3, py - 4, 2, 0, 2 * Math.PI);
-      ctx.arc(px + 3, py - 4, 2, 0, 2 * Math.PI);
-      ctx.fill();
-      
+
+      // Draw turkey sprite using shared function
+      const hue = color.includes('255, 140, 0') ? 30 : 180; // Orange or Cyan
+      this.drawTurkeySprite(ctx,
+        { px, py },
+        { px: px + 4, py: py - 2 },
+        { px: px + 5, py },
+        1.0,
+        hue
+      );
+
       ctx.restore();
       return;
     }
