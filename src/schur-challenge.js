@@ -40,7 +40,7 @@ export class SchurChallenge {
     this.targetSchurBasis = null;
 
     // Original points to animate
-    this.originalPoints = null;
+    this.originalPoints = [];
 
     // Time parameter for animation
     this.animationTime = 0;
@@ -99,12 +99,9 @@ export class SchurChallenge {
   /**
    * Generate a new challenge with random skew-symmetric matrix
    */
-  async newChallenge() {
+  newChallenge() {
     // Generate a random skew-symmetric matrix
     this.skewMatrix = randomSkewSymmetric(this.dimensions);
-
-    // Compute the actual Schur decomposition (for checking, not shown to user)
-    this.targetSchurBasis = await this.computeSchurBasis(this.skewMatrix);
 
     // Generate points to animate (on sphere or in ball)
     const numPoints = 8; // Multiple points to show the transformation
@@ -146,39 +143,6 @@ export class SchurChallenge {
     this.hasWon = false;
 
     this.updateUI();
-  }
-
-  /**
-   * Compute Schur basis for the skew-symmetric matrix
-   * This is the "solution" that the player is trying to find
-   * For now, we'll use a simple approach: eigendecomposition via mathjs
-   */
-  async computeSchurBasis(K) {
-    // Import mathjs dynamically
-    const math = await import('mathjs');
-    const { arrayToMathMatrix, mathMatrixToArray } = await import('./geodesic.js');
-
-    try {
-      // Convert to mathjs matrix
-      const mathK = arrayToMathMatrix(K);
-
-      // Compute eigendecomposition
-      // For skew-symmetric matrices, eigenvalues are purely imaginary
-      // and come in conjugate pairs
-      const eig = math.eigs(mathK);
-
-      // Extract real and imaginary parts of eigenvectors
-      // For real skew-symmetric matrices, we can construct an orthogonal basis
-      // from the real and imaginary parts of eigenvectors
-
-      // For now, return identity as a placeholder
-      // A proper implementation would construct the Schur basis from eigenvectors
-      return identityNxN(this.dimensions);
-    } catch (e) {
-      console.error('Failed to compute Schur basis:', e);
-      // Return a random rotation as fallback
-      return sampleRandomRotation(this.dimensions);
-    }
   }
 
   /**
