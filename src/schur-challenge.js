@@ -207,31 +207,30 @@ export class SchurChallenge {
       mathMatrixToArray
     );
 
-    // Transform points: Q^T @ exp(t*K) @ x
-    // First apply exp(tK) to original points, then apply Q^T
-    const rotatedPoints = this.originalPoints.map(point => {
-      const afterExp = matVecMultN(expMat, point);
-      const QT = transposeN(this.playerOrientation);
-      return matVecMultN(QT, afterExp);
+    // Transform points by exp(t*K) only (in world coordinates)
+    // The scatterplot will apply Q^T transformation via the player orientation
+    const worldPoints = this.originalPoints.map(point => {
+      return matVecMultN(expMat, point);
     });
 
-    // Create a fake "player" at origin
+    // Create a fake "player" at origin with Q as orientation
+    // The scatterplot renders in player's frame, so it will show Q^T @ worldPoints
     const player = {
       position: new Array(this.dimensions).fill(0),
       orientation: this.playerOrientation
     };
 
-    // Render the animated points
-    const pointsToRender = rotatedPoints.map((point, idx) => ({
+    // Convert to turkey format (objects with position property)
+    const turkeysToRender = worldPoints.map((point, idx) => ({
       position: point,
-      color: `hsl(${(idx / this.originalPoints.length) * 360}, 70%, 60%)`,
-      size: 8
+      hue: (idx / this.originalPoints.length) * 360,
+      scale: 1.0,
+      pardoned: false
     }));
 
-    this.scatterplot.render(player, pointsToRender, {
+    this.scatterplot.render(player, turkeysToRender, {
       showPlayer: false,
-      showGrid: this.gridEnabled,
-      paths: []
+      showGrid: this.gridEnabled
     });
   }
 
