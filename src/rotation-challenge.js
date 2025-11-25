@@ -510,7 +510,15 @@ export class RotationChallenge {
   gameLoop(currentTime) {
     if (!this.running) return;
 
-    const dt = Math.min((currentTime - this.lastTime) / 1000, 0.1);
+    // Cap to 60 FPS - skip frames if running faster
+    const targetFrameTime = 1000 / 60; // 16.67ms per frame
+    const timeSinceLastFrame = currentTime - this.lastTime;
+    if (timeSinceLastFrame < targetFrameTime) {
+      requestAnimationFrame((t) => this.gameLoop(t));
+      return;
+    }
+
+    const dt = Math.min(timeSinceLastFrame / 1000, 0.1);
     this.lastTime = currentTime;
 
     this.update(dt);

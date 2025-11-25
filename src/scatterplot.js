@@ -10,8 +10,7 @@ export class ScatterplotMatrix {
     this.canvas = canvas;
     // Enable hardware acceleration hints
     this.ctx = canvas.getContext('2d', {
-      alpha: false,           // No transparency needed, allows GPU optimizations
-      desynchronized: true    // Enable async rendering for better performance
+      alpha: false            // No transparency needed, allows GPU optimizations
     });
     this.dimensions = dimensions;
     this.cellSize = 0;
@@ -164,8 +163,7 @@ export class ScatterplotMatrix {
     // Create canvas
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d', {
-      alpha: false,           // No transparency needed, allows GPU optimizations
-      desynchronized: true    // Enable async rendering for better performance
+      alpha: false            // No transparency needed, allows GPU optimizations
     });
     
     // Set canvas size (will be adjusted in render)
