@@ -114,7 +114,8 @@ h1 {
 #movement-status,
 #distance-display,
 #alignment-score,
-#best-score {
+#best-score,
+#fps-display {
   color: #00ff88;
   font-weight: bold;
   font-size: 1.1em;
@@ -131,6 +132,8 @@ h1 {
   -webkit-touch-callout: none; /* prevent context menu on long-press */
   display: block; /* prevent inline spacing */
   margin: 0 auto; /* center horizontally */
+  will-change: contents; /* hint GPU layer promotion for canvas rendering */
+  transform: translateZ(0); /* force GPU compositing layer */
 }
 
 /* Prevent outline on canvas interaction */
@@ -518,6 +521,8 @@ button:active {
   cursor: default;
   touch-action: auto;
   pointer-events: none;
+  will-change: contents; /* hint GPU layer promotion for canvas rendering */
+  transform: translateZ(0); /* force GPU compositing layer */
 }
 
 .mobile-rotation-controls {

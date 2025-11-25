@@ -24,6 +24,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
+        'turkey-test': resolve(__dirname, 'turkey-test.html'),
       },
     },
   },

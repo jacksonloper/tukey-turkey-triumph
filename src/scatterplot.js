@@ -8,7 +8,10 @@ import { matVecMult, matVecMultN, transpose, transposeN } from './math4d.js';
 export class ScatterplotMatrix {
   constructor(canvas, dimensions = 4) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
+    // Enable hardware acceleration hints
+    this.ctx = canvas.getContext('2d', {
+      alpha: false            // No transparency needed, allows GPU optimizations
+    });
     this.dimensions = dimensions;
     this.cellSize = 0;
     this.padding = 40;
@@ -17,7 +20,7 @@ export class ScatterplotMatrix {
     // Mobile view settings
     this.mobileViewEnabled = false;
     this.mobileOverlayEnabled = false;
-    
+
     // Rotation direction for mobile controls (1 = clockwise, -1 = counterclockwise)
     this.rotationDirection = 1;
 
@@ -159,7 +162,9 @@ export class ScatterplotMatrix {
     
     // Create canvas
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', {
+      alpha: false            // No transparency needed, allows GPU optimizations
+    });
     
     // Set canvas size (will be adjusted in render)
     const size = 200; // Base size
@@ -505,27 +510,44 @@ export class ScatterplotMatrix {
       return;
     }
 
-    // Render each pair of canvases
+    // Get viewport bounds for culling
+    const viewportHeight = window.innerHeight;
+    const cullingMargin = 100; // Render canvases 100px outside viewport
+
+    // Render each pair of canvases (only if visible)
     this.mobileCanvases.forEach(canvasInfo => {
       const [dimI, dimJ] = canvasInfo.dims;
-      
-      // Render target canvas (fixed paths - orange)
-      this.renderSingleMobileCanvas(
-        canvasInfo.targetCanvas,
-        canvasInfo.targetCtx,
-        dimI, dimJ,
-        playerLocal, turkeysLocal, ui, trailLocal, pathsLocal,
-        'target'
-      );
-      
-      // Render current canvas (rotating paths - cyan)
-      this.renderSingleMobileCanvas(
-        canvasInfo.currentCanvas,
-        canvasInfo.currentCtx,
-        dimI, dimJ,
-        playerLocal, turkeysLocal, ui, trailLocal, pathsLocal,
-        'current'
-      );
+
+      // Check if target canvas is visible in viewport
+      const targetRect = canvasInfo.targetCanvas.getBoundingClientRect();
+      const targetVisible = targetRect.bottom >= -cullingMargin && targetRect.top <= viewportHeight + cullingMargin;
+
+      // Check if current canvas is visible in viewport
+      const currentRect = canvasInfo.currentCanvas.getBoundingClientRect();
+      const currentVisible = currentRect.bottom >= -cullingMargin && currentRect.top <= viewportHeight + cullingMargin;
+
+      // Only render if visible
+      if (targetVisible) {
+        // Render target canvas (fixed paths - orange)
+        this.renderSingleMobileCanvas(
+          canvasInfo.targetCanvas,
+          canvasInfo.targetCtx,
+          dimI, dimJ,
+          playerLocal, turkeysLocal, ui, trailLocal, pathsLocal,
+          'target'
+        );
+      }
+
+      if (currentVisible) {
+        // Render current canvas (rotating paths - cyan)
+        this.renderSingleMobileCanvas(
+          canvasInfo.currentCanvas,
+          canvasInfo.currentCtx,
+          dimI, dimJ,
+          playerLocal, turkeysLocal, ui, trailLocal, pathsLocal,
+          'current'
+        );
+      }
     });
   }
 
@@ -766,39 +788,55 @@ export class ScatterplotMatrix {
       }
       ctx.stroke();
 
-      let idx;
+      // Draw animated turkey marker with interpolation
+      let point;
       if (arcLengths && arcLengths.length > 0) {
+        // Find point index based on arc length progress
         const totalLength = arcLengths[arcLengths.length - 1];
         const targetLength = progress * totalLength;
-        
-        idx = 0;
+
+        // Binary search for the right segment
+        let idx = 0;
         for (let i = 0; i < arcLengths.length - 1; i++) {
           if (arcLengths[i] <= targetLength && targetLength < arcLengths[i + 1]) {
             idx = i;
             break;
           }
         }
+
+        // Handle edge case where we're at the very end
         if (targetLength >= totalLength - 0.001) {
-          idx = points.length - 1;
+          point = points[points.length - 1];
+        } else {
+          // Interpolate between points[idx] and points[idx+1]
+          const segmentStart = arcLengths[idx];
+          const segmentEnd = arcLengths[idx + 1];
+          const segmentLength = segmentEnd - segmentStart;
+          const t = segmentLength > 0 ? (targetLength - segmentStart) / segmentLength : 0;
+
+          // Linear interpolation in N-dimensional space
+          const p0 = points[idx];
+          const p1 = points[idx + 1];
+          point = p0.map((coord, i) => coord + t * (p1[i] - coord));
         }
       } else {
-        idx = Math.floor(progress * (points.length - 1));
+        // Fallback to simple linear interpolation
+        const idx = Math.floor(progress * (points.length - 1));
+        point = points[idx];
       }
-      
-      const point = points[idx];
+
       const [px, py] = projectPoint(point);
-      
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(px, py, 5, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      // Draw turkey features (simple head crest)
-      ctx.beginPath();
-      ctx.arc(px - 3, py - 4, 2, 0, 2 * Math.PI);
-      ctx.arc(px + 3, py - 4, 2, 0, 2 * Math.PI);
-      ctx.fill();
-      
+
+      // Draw turkey sprite using shared function
+      const hue = color.includes('255, 140, 0') ? 30 : 180; // Orange or Cyan
+      this.drawTurkeySprite(ctx,
+        { px, py },
+        { px: px + 4, py: py - 2 },
+        { px: px + 5, py },
+        1.0,
+        hue
+      );
+
       ctx.restore();
       return;
     }
@@ -1513,71 +1551,55 @@ export class ScatterplotMatrix {
 
       // Draw animated turkey marker
       // Use arc length parameterization for constant speed
-      let idx;
+      let point;
       if (arcLengths && arcLengths.length > 0) {
         // Find point index based on arc length progress
         const totalLength = arcLengths[arcLengths.length - 1];
         const targetLength = progress * totalLength;
-        
+
         // Binary search for the right segment
-        idx = 0;
+        let idx = 0;
         for (let i = 0; i < arcLengths.length - 1; i++) {
           if (arcLengths[i] <= targetLength && targetLength < arcLengths[i + 1]) {
             idx = i;
             break;
           }
         }
+
         // Handle edge case where we're at the very end
         if (targetLength >= totalLength - 0.001) {
-          idx = points.length - 1;
+          point = points[points.length - 1];
+        } else {
+          // Interpolate between points[idx] and points[idx+1]
+          const segmentStart = arcLengths[idx];
+          const segmentEnd = arcLengths[idx + 1];
+          const segmentLength = segmentEnd - segmentStart;
+          const t = segmentLength > 0 ? (targetLength - segmentStart) / segmentLength : 0;
+
+          // Linear interpolation in N-dimensional space
+          const p0 = points[idx];
+          const p1 = points[idx + 1];
+          point = p0.map((coord, i) => coord + t * (p1[i] - coord));
         }
       } else {
         // Fallback to simple linear interpolation
-        idx = Math.floor(progress * (points.length - 1));
+        const idx = Math.floor(progress * (points.length - 1));
+        point = points[idx];
       }
-      
-      const point = points[idx];
+
       const [px, py] = projectPoint(point);
-      
-      // Draw turkey with proper turkey features
-      
-      // 1. Draw tail fan (behind the body)
-      ctx.fillStyle = color;
-      ctx.globalAlpha = 0.7;
-      ctx.beginPath();
-      ctx.moveTo(px - 2, py);
-      ctx.arc(px - 2, py, 6, -Math.PI * 0.4, Math.PI * 0.4);
-      ctx.closePath();
-      ctx.fill();
-      ctx.globalAlpha = 1.0;
-      
-      // 2. Draw body as a filled circle
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(px, py, 5, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      // 3. Draw head (small circle in front)
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(px + 4, py - 2, 2.5, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      // 4. Draw beak (small triangle)
-      ctx.fillStyle = '#FFB347'; // Orange beak
-      ctx.beginPath();
-      ctx.moveTo(px + 6, py - 2);
-      ctx.lineTo(px + 8, py - 2);
-      ctx.lineTo(px + 7, py - 1);
-      ctx.closePath();
-      ctx.fill();
-      
-      // 5. Draw wattle (red dangly bit under head)
-      ctx.fillStyle = '#FF5555'; // Red wattle
-      ctx.beginPath();
-      ctx.arc(px + 5, py, 1.5, 0, 2 * Math.PI);
-      ctx.fill();
-      
+
+      // Draw turkey sprite using shared function
+      // Extract hue from color (e.g., "rgba(255, 140, 0, 0.8)" for orange)
+      const hue = color.includes('255, 140, 0') ? 30 : 180; // Orange or Cyan
+      this.drawTurkeySprite(ctx,
+        { px, py },
+        { px: px + 4, py: py - 2 },
+        { px: px + 5, py },
+        1.0,
+        hue
+      );
+
       ctx.restore();
       return;
     }
@@ -1707,15 +1729,29 @@ export class ScatterplotMatrix {
   }
 
   /**
-   * Draw a simple turkey sprite with projected 3D coordinates
+   * Draw a turkey sprite with projected 3D coordinates
    * @param {Object} body - {px, py} screen coordinates for body
    * @param {Object} head - {px, py} screen coordinates for head
    * @param {Object} nose - {px, py} screen coordinates for nose/wattle
+   * @param {number} scale - Size multiplier
+   * @param {number} hue - HSL hue value for color (0-360)
    */
   drawTurkeySprite(ctx, body, head, nose, scale, hue) {
     ctx.save();
 
-    // Body (colored circle with outline) - use hue for color variation
+    // 1. Tail fan (behind body) - only for path animations
+    if (scale === 1.0) {
+      ctx.fillStyle = `hsl(${hue}, 60%, 55%)`;
+      ctx.globalAlpha = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(body.px - 2 * scale, body.py);
+      ctx.arc(body.px - 2 * scale, body.py, 6 * scale, -Math.PI * 0.4, Math.PI * 0.4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    }
+
+    // 2. Body (colored circle with outline)
     ctx.fillStyle = `hsl(${hue}, 60%, 55%)`;
     ctx.strokeStyle = `hsl(${hue}, 65%, 35%)`;
     ctx.lineWidth = 2 * scale;
@@ -1724,7 +1760,7 @@ export class ScatterplotMatrix {
     ctx.fill();
     ctx.stroke();
 
-    // Head (small circle, lighter shade)
+    // 3. Head (small circle, lighter shade)
     ctx.fillStyle = `hsl(${hue}, 55%, 65%)`;
     ctx.strokeStyle = `hsl(${hue}, 65%, 35%)`;
     ctx.lineWidth = 1.5 * scale;
@@ -1733,8 +1769,19 @@ export class ScatterplotMatrix {
     ctx.fill();
     ctx.stroke();
 
-    // Wattle (red-orange accent)
-    ctx.fillStyle = `hsl(${(hue + 180) % 360}, 80%, 60%)`;
+    // 4. Beak (small triangle) - only for path animations
+    if (scale === 1.0) {
+      ctx.fillStyle = '#FFB347'; // Orange beak
+      ctx.beginPath();
+      ctx.moveTo(head.px + 2 * scale, head.py);
+      ctx.lineTo(head.px + 4 * scale, head.py);
+      ctx.lineTo(head.px + 3 * scale, head.py + 1 * scale);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 5. Wattle (red-orange accent)
+    ctx.fillStyle = scale === 1.0 ? '#FF5555' : `hsl(${(hue + 180) % 360}, 80%, 60%)`;
     ctx.beginPath();
     ctx.arc(nose.px, nose.py, 1.5 * scale, 0, Math.PI * 2);
     ctx.fill();
