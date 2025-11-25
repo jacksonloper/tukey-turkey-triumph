@@ -76,6 +76,10 @@ export class RotationChallenge {
     // Turkey mode animation state
     this.turkeyProgress = 0; // 0 to 1, in terms of arc length
     this.turkeyDuration = 6.0; // seconds to traverse whole path
+    
+    // Turkey trail settings (off by default as per requirement)
+    this.turkeyTrailEnabled = false;
+    this.turkeyTrailDecay = 0.3; // Trail decays to zero at 30% of circuit
 
     // Rendering
     this.scatterplot = new ScatterplotMatrix(canvas, dimensions);
@@ -320,7 +324,9 @@ export class RotationChallenge {
           fixed: true, 
           turkey: true, 
           progress: this.turkeyProgress,
-          arcLengths: this.arcLengths 
+          arcLengths: this.arcLengths,
+          showTrail: this.turkeyTrailEnabled,
+          trailDecay: this.turkeyTrailDecay
         },
         { 
           points: this.targetPath, 
@@ -329,7 +335,9 @@ export class RotationChallenge {
           fixed: false, 
           turkey: true, 
           progress: this.turkeyProgress,
-          arcLengths: this.arcLengths 
+          arcLengths: this.arcLengths,
+          showTrail: this.turkeyTrailEnabled,
+          trailDecay: this.turkeyTrailDecay
         }
       ];
     }
@@ -487,6 +495,13 @@ export class RotationChallenge {
    */
   setAutoLockThreshold(threshold) {
     this.autoLockThreshold = threshold;
+  }
+
+  /**
+   * Set turkey trail enabled state
+   */
+  setTurkeyTrailEnabled(enabled) {
+    this.turkeyTrailEnabled = enabled;
   }
 
   /**

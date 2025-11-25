@@ -387,6 +387,171 @@ export class ScatterplotMatrix {
   }
 
   /**
+   * Modify the alpha of an rgba color string
+   * @param {string} color - Color in rgba format like 'rgba(255, 140, 0, 0.8)'
+   * @param {number} alpha - New alpha value (0-1)
+   * @returns {string} Modified color string
+   */
+  setColorAlpha(color, alpha) {
+    // Match rgba format: rgba(r, g, b, a)
+    const rgbaMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
+    if (rgbaMatch) {
+      return `rgba(${rgbaMatch[1]}, ${rgbaMatch[2]}, ${rgbaMatch[3]}, ${alpha.toFixed(2)})`;
+    }
+    // Fallback: return original color if format doesn't match
+    return color;
+  }
+
+  /**
+   * Find point index based on progress value and arc lengths
+   * @param {number} progress - Progress value between 0 and 1
+   * @param {Array} points - Array of path points
+   * @param {Array} arcLengths - Optional arc length array for constant-speed animation
+   * @returns {number} Index into the points array
+   */
+  findPointIndex(progress, points, arcLengths) {
+    if (arcLengths && arcLengths.length > 0) {
+      const totalLength = arcLengths[arcLengths.length - 1];
+      const targetLength = progress * totalLength;
+      
+      let idx = 0;
+      for (let i = 0; i < arcLengths.length - 1; i++) {
+        if (arcLengths[i] <= targetLength && targetLength < arcLengths[i + 1]) {
+          idx = i;
+          break;
+        }
+      }
+      if (targetLength >= totalLength - 0.001) {
+        idx = points.length - 1;
+      }
+      return idx;
+    } else {
+      return Math.floor(progress * (points.length - 1));
+    }
+  }
+
+  /**
+   * Draw turkey fading trail
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   * @param {object} pathData - Path data including points, color, progress, arcLengths, trailDecay
+   * @param {Function} projectPoint - Function to project N-D point to [px, py]
+   */
+  drawTurkeyTrail(ctx, pathData, projectPoint) {
+    const { points, color, progress = 0, arcLengths, trailDecay = 0.3 } = pathData;
+    
+    // Draw more trail segments for a smoother trail
+    const numSegments = Math.floor(points.length * trailDecay);
+    for (let seg = 0; seg < numSegments; seg++) {
+      let segProgress = progress - (trailDecay * (seg + 1) / numSegments);
+      if (segProgress < 0) segProgress += 1.0;
+      
+      const segIdx = this.findPointIndex(segProgress, points, arcLengths);
+      // Fade from full opacity at turkey to zero at trail end
+      const fadeRatio = 1 - ((seg + 1) / numSegments);
+      
+      const segPoint = points[segIdx];
+      const [segPx, segPy] = projectPoint(segPoint);
+      
+      // Make trail more visible: higher opacity (0.9 to 0.1) and larger dots (5 to 2)
+      ctx.fillStyle = this.setColorAlpha(color, 0.9 * fadeRatio + 0.1);
+      ctx.beginPath();
+      ctx.arc(segPx, segPy, 4 * fadeRatio + 2, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+  }
+
+  /**
+   * Draw turkey sprite at given position
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   * @param {number} px - X coordinate
+   * @param {number} py - Y coordinate
+   * @param {string} color - Fill color
+   */
+  drawTurkeyMarker(ctx, px, py, color) {
+    // 1. Draw tail fan (behind the body)
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(px - 2, py);
+    ctx.arc(px - 2, py, 6, -Math.PI * 0.4, Math.PI * 0.4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+    
+    // 2. Draw body as a filled circle
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(px, py, 5, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // 3. Draw head (small circle in front)
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(px + 4, py - 2, 2.5, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // 4. Draw beak (small triangle)
+    ctx.fillStyle = '#FFB347'; // Orange beak
+    ctx.beginPath();
+    ctx.moveTo(px + 6, py - 2);
+    ctx.lineTo(px + 8, py - 2);
+    ctx.lineTo(px + 7, py - 1);
+    ctx.closePath();
+    ctx.fill();
+    
+    // 5. Draw wattle (red dangly bit under head)
+    ctx.fillStyle = '#FF5555'; // Red wattle
+    ctx.beginPath();
+    ctx.arc(px + 5, py, 1.5, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+
+  /**
+   * Draw turkey mode path with trail and marker
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   * @param {object} pathData - Path data
+   * @param {Function} projectPoint - Function to project N-D point to [px, py]
+   */
+  drawTurkeyPath(ctx, pathData, projectPoint) {
+    const { points, color, progress = 0, arcLengths, showTrail = false } = pathData;
+    
+    ctx.save();
+    
+    // Draw faint path line
+    ctx.strokeStyle = this.setColorAlpha(color, 0.3);
+    ctx.lineWidth = 1;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    ctx.beginPath();
+    let firstPoint = true;
+    for (let i = 0; i < points.length; i++) {
+      const [px, py] = projectPoint(points[i]);
+      if (firstPoint) {
+        ctx.moveTo(px, py);
+        firstPoint = false;
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+    ctx.stroke();
+
+    // Draw fading trail behind the turkey if enabled
+    if (showTrail) {
+      this.drawTurkeyTrail(ctx, pathData, projectPoint);
+    }
+
+    // Draw animated turkey marker
+    const idx = this.findPointIndex(progress, points, arcLengths);
+    const point = points[idx];
+    const [px, py] = projectPoint(point);
+    
+    this.drawTurkeyMarker(ctx, px, py, color);
+    
+    ctx.restore();
+  }
+
+  /**
    * Render the complete scatterplot matrix
    */
   render(player, turkeys, ui = {}) {
@@ -668,7 +833,7 @@ export class ScatterplotMatrix {
   drawPathSeparate(ctx, cellX, cellY, cellWidth, cellHeight, pathData, dimI, dimJ) {
     const viewRange = this.gridRange;
 
-    const { points, color, numbered, numDots = 6, turkey, progress = 0, arcLengths } = pathData;
+    const { points, color, numbered, numDots = 6, turkey, progress = 0, arcLengths, showTrail = false, trailDecay = 0.3 } = pathData;
 
     // Helper to project point to screen coordinates
     const projectPoint = (point) => {
@@ -746,60 +911,7 @@ export class ScatterplotMatrix {
 
     // Turkey mode
     if (turkey) {
-      ctx.save();
-      
-      ctx.strokeStyle = color.replace('0.8', '0.3');
-      ctx.lineWidth = 1;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      
-      ctx.beginPath();
-      let firstPoint = true;
-      for (let i = 0; i < points.length; i++) {
-        const [px, py] = projectPoint(points[i]);
-        if (firstPoint) {
-          ctx.moveTo(px, py);
-          firstPoint = false;
-        } else {
-          ctx.lineTo(px, py);
-        }
-      }
-      ctx.stroke();
-
-      let idx;
-      if (arcLengths && arcLengths.length > 0) {
-        const totalLength = arcLengths[arcLengths.length - 1];
-        const targetLength = progress * totalLength;
-        
-        idx = 0;
-        for (let i = 0; i < arcLengths.length - 1; i++) {
-          if (arcLengths[i] <= targetLength && targetLength < arcLengths[i + 1]) {
-            idx = i;
-            break;
-          }
-        }
-        if (targetLength >= totalLength - 0.001) {
-          idx = points.length - 1;
-        }
-      } else {
-        idx = Math.floor(progress * (points.length - 1));
-      }
-      
-      const point = points[idx];
-      const [px, py] = projectPoint(point);
-      
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(px, py, 5, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      // Draw turkey features (simple head crest)
-      ctx.beginPath();
-      ctx.arc(px - 3, py - 4, 2, 0, 2 * Math.PI);
-      ctx.arc(px + 3, py - 4, 2, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      ctx.restore();
+      this.drawTurkeyPath(ctx, pathData, projectPoint);
       return;
     }
 
@@ -850,7 +962,7 @@ export class ScatterplotMatrix {
     const ctx = this.ctx;
     const viewRange = this.gridRange;
 
-    const { points, color, numbered, numDots = 6, turkey, progress = 0, arcLengths } = pathData;
+    const { points, color, numbered, numDots = 6, turkey, progress = 0, arcLengths, showTrail = false, trailDecay = 0.3 } = pathData;
 
     // Helper to project point to screen coordinates
     const projectPoint = (point) => {
@@ -928,59 +1040,7 @@ export class ScatterplotMatrix {
 
     // Turkey mode
     if (turkey) {
-      ctx.save();
-      
-      ctx.strokeStyle = color.replace('0.8', '0.3');
-      ctx.lineWidth = 1;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      
-      ctx.beginPath();
-      let firstPoint = true;
-      for (let i = 0; i < points.length; i++) {
-        const [px, py] = projectPoint(points[i]);
-        if (firstPoint) {
-          ctx.moveTo(px, py);
-          firstPoint = false;
-        } else {
-          ctx.lineTo(px, py);
-        }
-      }
-      ctx.stroke();
-
-      let idx;
-      if (arcLengths && arcLengths.length > 0) {
-        const totalLength = arcLengths[arcLengths.length - 1];
-        const targetLength = progress * totalLength;
-        
-        idx = 0;
-        for (let i = 0; i < arcLengths.length - 1; i++) {
-          if (arcLengths[i] <= targetLength && targetLength < arcLengths[i + 1]) {
-            idx = i;
-            break;
-          }
-        }
-        if (targetLength >= totalLength - 0.001) {
-          idx = points.length - 1;
-        }
-      } else {
-        idx = Math.floor(progress * (points.length - 1));
-      }
-      
-      const point = points[idx];
-      const [px, py] = projectPoint(point);
-      
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(px, py, 5, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      ctx.beginPath();
-      ctx.arc(px - 3, py - 4, 2, 0, 2 * Math.PI);
-      ctx.arc(px + 3, py - 4, 2, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      ctx.restore();
+      this.drawTurkeyPath(ctx, pathData, projectPoint);
       return;
     }
 
@@ -1407,7 +1467,7 @@ export class ScatterplotMatrix {
     const startY = cellY + this.cellPadding;
     const viewRange = this.gridRange;
 
-    const { points, color, numbered, numDots = 6, turkey, progress = 0, arcLengths } = pathData;
+    const { points, color, numbered, numDots = 6, turkey, progress = 0, arcLengths, showTrail = false, trailDecay = 0.3 } = pathData;
 
     // Helper to project point to screen coordinates
     const projectPoint = (point) => {
@@ -1490,95 +1550,7 @@ export class ScatterplotMatrix {
 
     // Turkey mode - show animated marker
     if (turkey) {
-      ctx.save();
-      
-      // Draw faint path line
-      ctx.strokeStyle = color.replace('0.8', '0.3');
-      ctx.lineWidth = 1;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      
-      ctx.beginPath();
-      let firstPoint = true;
-      for (let i = 0; i < points.length; i++) {
-        const [px, py] = projectPoint(points[i]);
-        if (firstPoint) {
-          ctx.moveTo(px, py);
-          firstPoint = false;
-        } else {
-          ctx.lineTo(px, py);
-        }
-      }
-      ctx.stroke();
-
-      // Draw animated turkey marker
-      // Use arc length parameterization for constant speed
-      let idx;
-      if (arcLengths && arcLengths.length > 0) {
-        // Find point index based on arc length progress
-        const totalLength = arcLengths[arcLengths.length - 1];
-        const targetLength = progress * totalLength;
-        
-        // Binary search for the right segment
-        idx = 0;
-        for (let i = 0; i < arcLengths.length - 1; i++) {
-          if (arcLengths[i] <= targetLength && targetLength < arcLengths[i + 1]) {
-            idx = i;
-            break;
-          }
-        }
-        // Handle edge case where we're at the very end
-        if (targetLength >= totalLength - 0.001) {
-          idx = points.length - 1;
-        }
-      } else {
-        // Fallback to simple linear interpolation
-        idx = Math.floor(progress * (points.length - 1));
-      }
-      
-      const point = points[idx];
-      const [px, py] = projectPoint(point);
-      
-      // Draw turkey with proper turkey features
-      
-      // 1. Draw tail fan (behind the body)
-      ctx.fillStyle = color;
-      ctx.globalAlpha = 0.7;
-      ctx.beginPath();
-      ctx.moveTo(px - 2, py);
-      ctx.arc(px - 2, py, 6, -Math.PI * 0.4, Math.PI * 0.4);
-      ctx.closePath();
-      ctx.fill();
-      ctx.globalAlpha = 1.0;
-      
-      // 2. Draw body as a filled circle
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(px, py, 5, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      // 3. Draw head (small circle in front)
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(px + 4, py - 2, 2.5, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      // 4. Draw beak (small triangle)
-      ctx.fillStyle = '#FFB347'; // Orange beak
-      ctx.beginPath();
-      ctx.moveTo(px + 6, py - 2);
-      ctx.lineTo(px + 8, py - 2);
-      ctx.lineTo(px + 7, py - 1);
-      ctx.closePath();
-      ctx.fill();
-      
-      // 5. Draw wattle (red dangly bit under head)
-      ctx.fillStyle = '#FF5555'; // Red wattle
-      ctx.beginPath();
-      ctx.arc(px + 5, py, 1.5, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      ctx.restore();
+      this.drawTurkeyPath(ctx, pathData, projectPoint);
       return;
     }
 

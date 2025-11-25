@@ -23,6 +23,7 @@ async function init() {
   const autoLockToggle = document.getElementById('auto-lock-toggle');
   const autoLockThresholdInput = document.getElementById('auto-lock-threshold-input');
   const autoLockThresholdContainer = document.querySelector('.auto-lock-threshold');
+  const turkeyTrailToggle = document.getElementById('turkey-trail-toggle');
   const subtitle = document.getElementById('subtitle');
   const scrollHint = document.getElementById('scroll-hint');
 
@@ -39,6 +40,9 @@ async function init() {
   challenge.setShowDistanceInfo(distanceInfoToggle.checked);
   challenge.setAutoLockEnabled(autoLockToggle.checked);
   challenge.setAutoLockThreshold(parseFloat(autoLockThresholdInput.value));
+  if (turkeyTrailToggle) {
+    challenge.setTurkeyTrailEnabled(turkeyTrailToggle.checked);
+  }
 
   // Update subtitle to reflect current dimension
   function updateSubtitle(dim) {
@@ -77,6 +81,9 @@ async function init() {
       challenge.setShowDistanceInfo(distanceInfoToggle.checked);
       challenge.setAutoLockEnabled(autoLockToggle.checked);
       challenge.setAutoLockThreshold(parseFloat(autoLockThresholdInput.value));
+      if (turkeyTrailToggle) {
+        challenge.setTurkeyTrailEnabled(turkeyTrailToggle.checked);
+      }
 
       // Update subtitle
       updateSubtitle(currentDimensions);
@@ -134,6 +141,13 @@ async function init() {
       challenge.setAutoLockThreshold(threshold);
     }
   });
+
+  // Turkey trail toggle wiring
+  if (turkeyTrailToggle) {
+    turkeyTrailToggle.addEventListener('change', () => {
+      challenge.setTurkeyTrailEnabled(turkeyTrailToggle.checked);
+    });
+  }
 
   // Hide scroll hint only when at least half of the canvas is visible
   const updateScrollHint = () => {
