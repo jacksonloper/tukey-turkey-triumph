@@ -83,10 +83,16 @@ export class RotationChallenge {
     // UI elements
     this.alignmentScoreEl = document.getElementById('alignment-score');
     this.bestScoreEl = document.getElementById('best-score');
+    this.fpsDisplayEl = document.getElementById('fps-display');
 
     // Game loop
     this.lastTime = performance.now();
     this.running = true;
+
+    // FPS tracking
+    this.frameCount = 0;
+    this.lastFpsUpdate = performance.now();
+    this.currentFps = 0;
 
     // Generate initial challenge
     this.newChallenge();
@@ -500,6 +506,17 @@ export class RotationChallenge {
 
     this.update(dt);
     this.render();
+
+    // Update FPS counter
+    this.frameCount++;
+    if (currentTime - this.lastFpsUpdate >= 500) {
+      this.currentFps = Math.round(this.frameCount / ((currentTime - this.lastFpsUpdate) / 1000));
+      if (this.fpsDisplayEl) {
+        this.fpsDisplayEl.textContent = this.currentFps;
+      }
+      this.frameCount = 0;
+      this.lastFpsUpdate = currentTime;
+    }
 
     requestAnimationFrame((t) => this.gameLoop(t));
   }
