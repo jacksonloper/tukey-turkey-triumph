@@ -1520,30 +1520,42 @@ export class ScatterplotMatrix {
 
       // Draw animated turkey marker
       // Use arc length parameterization for constant speed
-      let idx;
+      let point;
       if (arcLengths && arcLengths.length > 0) {
         // Find point index based on arc length progress
         const totalLength = arcLengths[arcLengths.length - 1];
         const targetLength = progress * totalLength;
-        
+
         // Binary search for the right segment
-        idx = 0;
+        let idx = 0;
         for (let i = 0; i < arcLengths.length - 1; i++) {
           if (arcLengths[i] <= targetLength && targetLength < arcLengths[i + 1]) {
             idx = i;
             break;
           }
         }
+
         // Handle edge case where we're at the very end
         if (targetLength >= totalLength - 0.001) {
-          idx = points.length - 1;
+          point = points[points.length - 1];
+        } else {
+          // Interpolate between points[idx] and points[idx+1]
+          const segmentStart = arcLengths[idx];
+          const segmentEnd = arcLengths[idx + 1];
+          const segmentLength = segmentEnd - segmentStart;
+          const t = segmentLength > 0 ? (targetLength - segmentStart) / segmentLength : 0;
+
+          // Linear interpolation in N-dimensional space
+          const p0 = points[idx];
+          const p1 = points[idx + 1];
+          point = p0.map((coord, i) => coord + t * (p1[i] - coord));
         }
       } else {
         // Fallback to simple linear interpolation
-        idx = Math.floor(progress * (points.length - 1));
+        const idx = Math.floor(progress * (points.length - 1));
+        point = points[idx];
       }
-      
-      const point = points[idx];
+
       const [px, py] = projectPoint(point);
       
       // Draw turkey with proper turkey features
