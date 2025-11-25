@@ -8,7 +8,11 @@ import { matVecMult, matVecMultN, transpose, transposeN } from './math4d.js';
 export class ScatterplotMatrix {
   constructor(canvas, dimensions = 4) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
+    // Enable hardware acceleration hints
+    this.ctx = canvas.getContext('2d', {
+      alpha: false,           // No transparency needed, allows GPU optimizations
+      desynchronized: true    // Enable async rendering for better performance
+    });
     this.dimensions = dimensions;
     this.cellSize = 0;
     this.padding = 40;
@@ -159,7 +163,10 @@ export class ScatterplotMatrix {
     
     // Create canvas
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', {
+      alpha: false,           // No transparency needed, allows GPU optimizations
+      desynchronized: true    // Enable async rendering for better performance
+    });
     
     // Set canvas size (will be adjusted in render)
     const size = 200; // Base size
