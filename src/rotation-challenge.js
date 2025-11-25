@@ -94,6 +94,13 @@ export class RotationChallenge {
     this.lastFpsUpdate = performance.now();
     this.currentFps = 0;
 
+    // Initialize FPS display
+    if (this.fpsDisplayEl) {
+      this.fpsDisplayEl.textContent = '—';
+    } else {
+      console.warn('FPS display element not found');
+    }
+
     // Generate initial challenge
     this.newChallenge();
 
