@@ -25,10 +25,6 @@ export class ScatterplotMatrix {
     // Rotation direction for mobile controls (1 = clockwise, -1 = counterclockwise)
     this.rotationDirection = 1;
 
-    // Viewport culling cache (avoid getBoundingClientRect every frame)
-    this.lastScrollUpdate = 0;
-    this.scrollUpdateThrottle = 100; // Update visibility every 100ms max
-
     // World-grid rendering settings (cardinal basis)
     this.gridSpacing = 2.0; // world units between grid lines (half as many)
     this.gridRange = 4.0;   // cover initial field of view [-4,4]
@@ -516,33 +512,24 @@ export class ScatterplotMatrix {
       return;
     }
 
-    // Throttle viewport visibility checks to avoid layout thrashing
-    const now = performance.now();
-    const shouldUpdateVisibility = (now - this.lastScrollUpdate) >= this.scrollUpdateThrottle;
+    // Get viewport bounds for culling
+    const viewportHeight = window.innerHeight;
+    const cullingMargin = 100; // Render canvases 100px outside viewport
 
-    if (shouldUpdateVisibility) {
-      // Get viewport bounds for culling
-      const viewportHeight = window.innerHeight;
-      const cullingMargin = 100; // Render canvases 100px outside viewport
-
-      // Cache visibility for each canvas
-      this.mobileCanvases.forEach(canvasInfo => {
-        const targetRect = canvasInfo.targetCanvas.getBoundingClientRect();
-        canvasInfo.targetVisible = targetRect.bottom >= -cullingMargin && targetRect.top <= viewportHeight + cullingMargin;
-
-        const currentRect = canvasInfo.currentCanvas.getBoundingClientRect();
-        canvasInfo.currentVisible = currentRect.bottom >= -cullingMargin && currentRect.top <= viewportHeight + cullingMargin;
-      });
-
-      this.lastScrollUpdate = now;
-    }
-
-    // Render each pair of canvases (using cached visibility)
+    // Render each pair of canvases (only if visible)
     this.mobileCanvases.forEach(canvasInfo => {
       const [dimI, dimJ] = canvasInfo.dims;
 
-      // Only render if visible (using cached value, defaults to true if not yet checked)
-      if (canvasInfo.targetVisible !== false) {
+      // Check if target canvas is visible in viewport
+      const targetRect = canvasInfo.targetCanvas.getBoundingClientRect();
+      const targetVisible = targetRect.bottom >= -cullingMargin && targetRect.top <= viewportHeight + cullingMargin;
+
+      // Check if current canvas is visible in viewport
+      const currentRect = canvasInfo.currentCanvas.getBoundingClientRect();
+      const currentVisible = currentRect.bottom >= -cullingMargin && currentRect.top <= viewportHeight + cullingMargin;
+
+      // Only render if visible
+      if (targetVisible) {
         // Render target canvas (fixed paths - orange)
         this.renderSingleMobileCanvas(
           canvasInfo.targetCanvas,
@@ -553,7 +540,7 @@ export class ScatterplotMatrix {
         );
       }
 
-      if (canvasInfo.currentVisible !== false) {
+      if (currentVisible) {
         // Render current canvas (rotating paths - cyan)
         this.renderSingleMobileCanvas(
           canvasInfo.currentCanvas,
