@@ -103,33 +103,12 @@ export class SchurChallenge {
     // Generate a random skew-symmetric matrix
     this.skewMatrix = randomSkewSymmetric(this.dimensions);
 
-    // Generate points to animate (on sphere or in ball)
-    const numPoints = 8; // Multiple points to show the transformation
-    this.originalPoints = [];
-    for (let i = 0; i < numPoints; i++) {
-      const angle = (i / numPoints) * 2 * Math.PI;
-      const point = new Array(this.dimensions).fill(0);
-      // Create points in a pattern that will reveal the block structure
-      if (this.dimensions === 2) {
-        point[0] = Math.cos(angle) * 2;
-        point[1] = Math.sin(angle) * 2;
-      } else if (this.dimensions === 3) {
-        point[0] = Math.cos(angle) * 2;
-        point[1] = Math.sin(angle) * 2;
-        point[2] = Math.cos(angle * 2) * 1.5;
-      } else {
-        // For higher dimensions, distribute across coordinate pairs
-        for (let d = 0; d < this.dimensions; d += 2) {
-          if (d + 1 < this.dimensions) {
-            point[d] = Math.cos(angle + d * 0.5) * 2;
-            point[d + 1] = Math.sin(angle + d * 0.5) * 2;
-          } else {
-            point[d] = Math.cos(angle * 3) * 1.5;
-          }
-        }
-      }
-      this.originalPoints.push(point);
-    }
+    // Generate a smooth curve to animate
+    // Use the same path generation as rotation challenge
+    const rawPath = generateSpherePath(this.dimensions, 100, 3);
+
+    // Resample to have evenly-spaced points (eliminates jittering)
+    this.originalPoints = resamplePathUniformly(rawPath, 100);
 
     // Reset player orientation
     this.playerOrientation = identityNxN(this.dimensions);
@@ -207,30 +186,33 @@ export class SchurChallenge {
       mathMatrixToArray
     );
 
-    // Transform points by exp(t*K) only (in world coordinates)
+    // Transform the entire curve by exp(t*K) (in world coordinates)
     // The scatterplot will apply Q^T transformation via the player orientation
-    const worldPoints = this.originalPoints.map(point => {
+    const rotatedPath = this.originalPoints.map(point => {
       return matVecMultN(expMat, point);
     });
 
     // Create a fake "player" at origin with Q as orientation
-    // The scatterplot renders in player's frame, so it will show Q^T @ worldPoints
+    // The scatterplot renders in player's frame, so it will show Q^T @ rotatedPath
     const player = {
       position: new Array(this.dimensions).fill(0),
       orientation: this.playerOrientation
     };
 
-    // Convert to turkey format (objects with position property)
-    const turkeysToRender = worldPoints.map((point, idx) => ({
-      position: point,
-      hue: (idx / this.originalPoints.length) * 360,
-      scale: 1.0,
-      pardoned: false
-    }));
+    // Render as a rainbow path
+    const pathsToRender = [
+      {
+        points: rotatedPath,
+        color: 'rainbow',
+        label: 'curve',
+        fixed: false
+      }
+    ];
 
-    this.scatterplot.render(player, turkeysToRender, {
+    this.scatterplot.render(player, [], {
       showPlayer: false,
-      showGrid: this.gridEnabled
+      showGrid: this.gridEnabled,
+      paths: pathsToRender
     });
   }
 
