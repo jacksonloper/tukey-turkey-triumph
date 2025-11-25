@@ -387,6 +387,22 @@ export class ScatterplotMatrix {
   }
 
   /**
+   * Modify the alpha of an rgba color string
+   * @param {string} color - Color in rgba format like 'rgba(255, 140, 0, 0.8)'
+   * @param {number} alpha - New alpha value (0-1)
+   * @returns {string} Modified color string
+   */
+  setColorAlpha(color, alpha) {
+    // Match rgba format: rgba(r, g, b, a)
+    const rgbaMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
+    if (rgbaMatch) {
+      return `rgba(${rgbaMatch[1]}, ${rgbaMatch[2]}, ${rgbaMatch[3]}, ${alpha.toFixed(2)})`;
+    }
+    // Fallback: return original color if format doesn't match
+    return color;
+  }
+
+  /**
    * Find point index based on progress value and arc lengths
    * @param {number} progress - Progress value between 0 and 1
    * @param {Array} points - Array of path points
@@ -434,7 +450,7 @@ export class ScatterplotMatrix {
       const segPoint = points[segIdx];
       const [segPx, segPy] = projectPoint(segPoint);
       
-      ctx.fillStyle = color.replace('0.8', (0.6 * opacity).toFixed(2));
+      ctx.fillStyle = this.setColorAlpha(color, 0.6 * opacity);
       ctx.beginPath();
       ctx.arc(segPx, segPy, 3 * opacity + 1, 0, 2 * Math.PI);
       ctx.fill();
@@ -499,7 +515,7 @@ export class ScatterplotMatrix {
     ctx.save();
     
     // Draw faint path line
-    ctx.strokeStyle = color.replace('0.8', '0.3');
+    ctx.strokeStyle = this.setColorAlpha(color, 0.3);
     ctx.lineWidth = 1;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
