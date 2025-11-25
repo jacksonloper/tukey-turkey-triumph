@@ -463,7 +463,7 @@ export function interpRotationSO(A, B, t) {
  *   const deriv = dGeodesicAtZeroArray(R, T, K);
  *   const halfway = geodesicInterpArray(R1, R2, 0.5);
  */
-export { 
+export {
   geodesicDistanceArray,
   dGeodesicAtZeroArray,
   geodesicInterpArray,
@@ -471,5 +471,134 @@ export {
   arrayToMathMatrix,
   mathMatrixToArray
 } from './geodesic.js';
+
+/**
+ * Generate a random skew-symmetric matrix (K^T = -K)
+ * For use in generating rotation curves via e^(tK)
+ * @param {number} n - Dimension
+ * @returns {Array} n×n skew-symmetric matrix
+ */
+export function randomSkewSymmetric(n) {
+  const K = identityNxN(n);
+  // Fill upper triangle with random values
+  for (let i = 0; i < n; i++) {
+    for (let j = i; j < n; j++) {
+      if (i === j) {
+        K[i][j] = 0; // Diagonal must be zero
+      } else {
+        const val = (Math.random() - 0.5) * 2; // Random in [-1, 1]
+        K[i][j] = val;
+        K[j][i] = -val; // Skew-symmetric property
+      }
+    }
+  }
+  return K;
+}
+
+/**
+ * Compute matrix exponential of a skew-symmetric matrix
+ * Uses mathjs expm for computation
+ * @param {Array} K - n×n array (skew-symmetric matrix)
+ * @param {number} t - scalar multiplier
+ * @returns {Promise<Array>} n×n array representing exp(t*K)
+ */
+export async function matrixExponential(K, t = 1.0) {
+  const { mathMatrixToArray, arrayToMathMatrix } = await import('./geodesic.js');
+  const math = await import('mathjs');
+
+  const mathK = arrayToMathMatrix(K);
+  const scaled = math.multiply(mathK, t);
+  const expMat = math.expm(scaled);
+  return mathMatrixToArray(expMat);
+}
+
+/**
+ * Compute matrix exponential synchronously (requires mathjs and geodesic to be already imported)
+ * @param {Array} K - n×n array (skew-symmetric matrix)
+ * @param {number} t - scalar multiplier
+ * @param {Object} math - mathjs instance
+ * @param {Function} arrayToMathMatrix - conversion function
+ * @param {Function} mathMatrixToArray - conversion function
+ * @returns {Array} n×n array representing exp(t*K)
+ */
+export function matrixExponentialSync(K, t, math, arrayToMathMatrix, mathMatrixToArray) {
+  const mathK = arrayToMathMatrix(K);
+  const scaled = math.multiply(mathK, t);
+  const expMat = math.expm(scaled);
+  return mathMatrixToArray(expMat);
+}
+
+/**
+ * Get the expected invariant block structure for each dimension
+ * Returns an array of block specifications: [[start1, end1], [start2, end2], ...]
+ * @param {number} n - Dimension
+ * @returns {Array} Array of [start, end] pairs for each invariant block
+ */
+export function getInvariantBlocks(n) {
+  if (n === 2) {
+    return [[0, 1]]; // Single 2D block
+  } else if (n === 3) {
+    return [[0, 1], [2, 2]]; // 2D block + 1D block
+  } else if (n === 4) {
+    return [[0, 1], [2, 3]]; // Two 2D blocks
+  } else if (n === 5) {
+    return [[0, 1], [2, 3], [4, 4]]; // Two 2D blocks + 1D block
+  }
+  // For n > 5, pair up dimensions
+  const blocks = [];
+  for (let i = 0; i < n; i += 2) {
+    if (i + 1 < n) {
+      blocks.push([i, i + 1]);
+    } else {
+      blocks.push([i, i]);
+    }
+  }
+  return blocks;
+}
+
+/**
+ * Compute the "off-block-diagonal norm" of a matrix
+ * Measures how far the matrix is from being block diagonal
+ * @param {Array} M - n×n matrix
+ * @param {Array} blocks - Array of [start, end] pairs specifying blocks
+ * @returns {number} Frobenius norm of off-block-diagonal entries
+ */
+export function offBlockDiagonalNorm(M, blocks) {
+  const n = M.length;
+  let sumSq = 0;
+
+  // Create a mask for which entries are "on-block-diagonal"
+  const isInBlock = Array(n).fill(false).map(() => Array(n).fill(false));
+  for (const [start, end] of blocks) {
+    for (let i = start; i <= end; i++) {
+      for (let j = start; j <= end; j++) {
+        isInBlock[i][j] = true;
+      }
+    }
+  }
+
+  // Sum up squares of off-block entries
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      if (!isInBlock[i][j]) {
+        sumSq += M[i][j] * M[i][j];
+      }
+    }
+  }
+
+  return Math.sqrt(sumSq);
+}
+
+/**
+ * Compute Q^T @ K @ Q for checking block diagonalization
+ * @param {Array} Q - n×n orthogonal matrix
+ * @param {Array} K - n×n matrix
+ * @returns {Array} n×n matrix Q^T @ K @ Q
+ */
+export function similarityTransform(Q, K) {
+  const QT = transposeN(Q);
+  const temp = matMultN(K, Q);
+  return matMultN(QT, temp);
+}
 
 
