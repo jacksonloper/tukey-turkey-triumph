@@ -439,20 +439,23 @@ export class ScatterplotMatrix {
   drawTurkeyTrail(ctx, pathData, projectPoint) {
     const { points, color, progress = 0, arcLengths, trailDecay = 0.3 } = pathData;
     
+    // Draw more trail segments for a smoother trail
     const numSegments = Math.floor(points.length * trailDecay);
     for (let seg = 0; seg < numSegments; seg++) {
       let segProgress = progress - (trailDecay * (seg + 1) / numSegments);
       if (segProgress < 0) segProgress += 1.0;
       
       const segIdx = this.findPointIndex(segProgress, points, arcLengths);
-      const opacity = 1 - ((seg + 1) / numSegments);
+      // Fade from full opacity at turkey to zero at trail end
+      const fadeRatio = 1 - ((seg + 1) / numSegments);
       
       const segPoint = points[segIdx];
       const [segPx, segPy] = projectPoint(segPoint);
       
-      ctx.fillStyle = this.setColorAlpha(color, 0.6 * opacity);
+      // Make trail more visible: higher opacity (0.9 to 0.1) and larger dots (5 to 2)
+      ctx.fillStyle = this.setColorAlpha(color, 0.9 * fadeRatio + 0.1);
       ctx.beginPath();
-      ctx.arc(segPx, segPy, 3 * opacity + 1, 0, 2 * Math.PI);
+      ctx.arc(segPx, segPy, 4 * fadeRatio + 2, 0, 2 * Math.PI);
       ctx.fill();
     }
   }
