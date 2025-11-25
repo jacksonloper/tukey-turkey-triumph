@@ -114,7 +114,8 @@ h1 {
 #movement-status,
 #distance-display,
 #alignment-score,
-#best-score {
+#best-score,
+#fps-display {
   color: #00ff88;
   font-weight: bold;
   font-size: 1.1em;

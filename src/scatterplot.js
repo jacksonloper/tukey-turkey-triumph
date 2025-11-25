@@ -512,27 +512,44 @@ export class ScatterplotMatrix {
       return;
     }
 
-    // Render each pair of canvases
+    // Get viewport bounds for culling
+    const viewportHeight = window.innerHeight;
+    const cullingMargin = 100; // Render canvases 100px outside viewport
+
+    // Render each pair of canvases (only if visible)
     this.mobileCanvases.forEach(canvasInfo => {
       const [dimI, dimJ] = canvasInfo.dims;
-      
-      // Render target canvas (fixed paths - orange)
-      this.renderSingleMobileCanvas(
-        canvasInfo.targetCanvas,
-        canvasInfo.targetCtx,
-        dimI, dimJ,
-        playerLocal, turkeysLocal, ui, trailLocal, pathsLocal,
-        'target'
-      );
-      
-      // Render current canvas (rotating paths - cyan)
-      this.renderSingleMobileCanvas(
-        canvasInfo.currentCanvas,
-        canvasInfo.currentCtx,
-        dimI, dimJ,
-        playerLocal, turkeysLocal, ui, trailLocal, pathsLocal,
-        'current'
-      );
+
+      // Check if target canvas is visible in viewport
+      const targetRect = canvasInfo.targetCanvas.getBoundingClientRect();
+      const targetVisible = targetRect.bottom >= -cullingMargin && targetRect.top <= viewportHeight + cullingMargin;
+
+      // Check if current canvas is visible in viewport
+      const currentRect = canvasInfo.currentCanvas.getBoundingClientRect();
+      const currentVisible = currentRect.bottom >= -cullingMargin && currentRect.top <= viewportHeight + cullingMargin;
+
+      // Only render if visible
+      if (targetVisible) {
+        // Render target canvas (fixed paths - orange)
+        this.renderSingleMobileCanvas(
+          canvasInfo.targetCanvas,
+          canvasInfo.targetCtx,
+          dimI, dimJ,
+          playerLocal, turkeysLocal, ui, trailLocal, pathsLocal,
+          'target'
+        );
+      }
+
+      if (currentVisible) {
+        // Render current canvas (rotating paths - cyan)
+        this.renderSingleMobileCanvas(
+          canvasInfo.currentCanvas,
+          canvasInfo.currentCtx,
+          dimI, dimJ,
+          playerLocal, turkeysLocal, ui, trailLocal, pathsLocal,
+          'current'
+        );
+      }
     });
   }
 
