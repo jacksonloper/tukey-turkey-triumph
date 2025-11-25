@@ -24,7 +24,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        'rotation-challenge': resolve(__dirname, 'rotation-challenge.html'),
         'turkey-test': resolve(__dirname, 'turkey-test.html'),
       },
     },
