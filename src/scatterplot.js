@@ -1572,46 +1572,18 @@ export class ScatterplotMatrix {
       }
 
       const [px, py] = projectPoint(point);
-      
-      // Draw turkey with proper turkey features
-      
-      // 1. Draw tail fan (behind the body)
-      ctx.fillStyle = color;
-      ctx.globalAlpha = 0.7;
-      ctx.beginPath();
-      ctx.moveTo(px - 2, py);
-      ctx.arc(px - 2, py, 6, -Math.PI * 0.4, Math.PI * 0.4);
-      ctx.closePath();
-      ctx.fill();
-      ctx.globalAlpha = 1.0;
-      
-      // 2. Draw body as a filled circle
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(px, py, 5, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      // 3. Draw head (small circle in front)
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(px + 4, py - 2, 2.5, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      // 4. Draw beak (small triangle)
-      ctx.fillStyle = '#FFB347'; // Orange beak
-      ctx.beginPath();
-      ctx.moveTo(px + 6, py - 2);
-      ctx.lineTo(px + 8, py - 2);
-      ctx.lineTo(px + 7, py - 1);
-      ctx.closePath();
-      ctx.fill();
-      
-      // 5. Draw wattle (red dangly bit under head)
-      ctx.fillStyle = '#FF5555'; // Red wattle
-      ctx.beginPath();
-      ctx.arc(px + 5, py, 1.5, 0, 2 * Math.PI);
-      ctx.fill();
-      
+
+      // Draw turkey sprite using shared function
+      // Extract hue from color (e.g., "rgba(255, 140, 0, 0.8)" for orange)
+      const hue = color.includes('255, 140, 0') ? 30 : 180; // Orange or Cyan
+      this.drawTurkeySprite(ctx,
+        { px, py },
+        { px: px + 4, py: py - 2 },
+        { px: px + 5, py },
+        1.0,
+        hue
+      );
+
       ctx.restore();
       return;
     }
@@ -1741,15 +1713,29 @@ export class ScatterplotMatrix {
   }
 
   /**
-   * Draw a simple turkey sprite with projected 3D coordinates
+   * Draw a turkey sprite with projected 3D coordinates
    * @param {Object} body - {px, py} screen coordinates for body
    * @param {Object} head - {px, py} screen coordinates for head
    * @param {Object} nose - {px, py} screen coordinates for nose/wattle
+   * @param {number} scale - Size multiplier
+   * @param {number} hue - HSL hue value for color (0-360)
    */
   drawTurkeySprite(ctx, body, head, nose, scale, hue) {
     ctx.save();
 
-    // Body (colored circle with outline) - use hue for color variation
+    // 1. Tail fan (behind body) - only for path animations
+    if (scale === 1.0) {
+      ctx.fillStyle = `hsl(${hue}, 60%, 55%)`;
+      ctx.globalAlpha = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(body.px - 2 * scale, body.py);
+      ctx.arc(body.px - 2 * scale, body.py, 6 * scale, -Math.PI * 0.4, Math.PI * 0.4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    }
+
+    // 2. Body (colored circle with outline)
     ctx.fillStyle = `hsl(${hue}, 60%, 55%)`;
     ctx.strokeStyle = `hsl(${hue}, 65%, 35%)`;
     ctx.lineWidth = 2 * scale;
@@ -1758,7 +1744,7 @@ export class ScatterplotMatrix {
     ctx.fill();
     ctx.stroke();
 
-    // Head (small circle, lighter shade)
+    // 3. Head (small circle, lighter shade)
     ctx.fillStyle = `hsl(${hue}, 55%, 65%)`;
     ctx.strokeStyle = `hsl(${hue}, 65%, 35%)`;
     ctx.lineWidth = 1.5 * scale;
@@ -1767,8 +1753,19 @@ export class ScatterplotMatrix {
     ctx.fill();
     ctx.stroke();
 
-    // Wattle (red-orange accent)
-    ctx.fillStyle = `hsl(${(hue + 180) % 360}, 80%, 60%)`;
+    // 4. Beak (small triangle) - only for path animations
+    if (scale === 1.0) {
+      ctx.fillStyle = '#FFB347'; // Orange beak
+      ctx.beginPath();
+      ctx.moveTo(head.px + 2 * scale, head.py);
+      ctx.lineTo(head.px + 4 * scale, head.py);
+      ctx.lineTo(head.px + 3 * scale, head.py + 1 * scale);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 5. Wattle (red-orange accent)
+    ctx.fillStyle = scale === 1.0 ? '#FF5555' : `hsl(${(hue + 180) % 360}, 80%, 60%)`;
     ctx.beginPath();
     ctx.arc(nose.px, nose.py, 1.5 * scale, 0, Math.PI * 2);
     ctx.fill();
