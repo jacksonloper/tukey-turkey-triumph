@@ -5,3 +5,8 @@ Suggested image: A friendly-looking turkey wearing a bow tie or graduation cap
 - Orange/brown colored turkey (to match the orange path color)
 - Dimensions: ~200x200px
 - Style: Friendly, educational, slightly whimsical
+
+Potential placement:
+- Could be displayed in the story section of index.html
+- Could be shown on the win screen
+- Could be used as favicon or social media preview image

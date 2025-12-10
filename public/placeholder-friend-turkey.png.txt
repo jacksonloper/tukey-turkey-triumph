@@ -6,3 +6,8 @@ Suggested image: A friendly-looking turkey appearing disoriented/confused
 - Dimensions: ~200x200px
 - Style: Friendly, educational, slightly whimsical
 - Should complement the Tukey portrait but show a different emotion
+
+Potential placement:
+- Could be displayed in the story section of index.html
+- Could be shown on the win screen alongside Tukey
+- Could be used in celebration animation when pardon is granted
