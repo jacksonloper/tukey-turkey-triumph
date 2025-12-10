@@ -4,11 +4,11 @@ Master rotations in SO(n) by helping Tukey the Turkey earn a presidential pardon
 
 ## The Story
 
-Meet **Tukey the Turkey** (orange), named after the legendary statistician John W. Tukey. Every Thanksgiving, the President pardons one turkey who can perfectly demonstrate understanding of multidimensional rotations. The pardoning ceremony requires the turkey to follow a specific path through high-dimensional space. However, another turkey (cyan) has gotten lost and is following a rotated version of the correct path! Help Tukey guide the lost turkey back to the correct orientation by finding the hidden rotation. If you succeed, both turkeys earn their presidential pardon! 🦃🎖️
+Meet **Tukey the Turkey** (orange), named after the legendary statistician John W. Tukey. Every Thanksgiving, the President pardons one turkey who can perfectly demonstrate understanding of multidimensional rotations. The pardoning ceremony requires the turkey to follow a specific path through high-dimensional space. However, Tukey's friend (cyan) has become disoriented and is following a rotated version of the correct path! Help Tukey guide their friend back to the correct orientation by finding the hidden rotation. If you succeed, both turkeys earn their presidential pardon! 🦃🎖️
 
 ## Overview
 
-- Two curves are displayed: Tukey's correct path (orange, fixed) and the lost turkey's rotated path (cyan)
+- Two curves are displayed: Tukey's correct path (orange, fixed) and their friend's disoriented path (cyan)
 - Hold on any off-diagonal cell (i, j) to rotate your basis in that plane
 - Align the cyan curve with the orange curve by finding the correct rotation
 - Choose from 2D to 5D spaces and different visualization modes
