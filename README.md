@@ -1,10 +1,14 @@
 # Rotation Matching Challenge 🔄
 
-Master rotations in SO(n) by aligning curves through Tukey's scatterplot matrix (the draughtsman's display). See all pairwise projections simultaneously as you search for the hidden rotation.  See live [here](https://jacksonloper.github.io/tukey-turkey-triumph/).
+Master rotations in SO(n) by helping Tukey the Turkey earn a presidential pardon! Align curves through Tukey's scatterplot matrix (the draughtsman's display). See all pairwise projections simultaneously as you search for the hidden rotation.  See live [here](https://jacksonloper.github.io/tukey-turkey-triumph/).
+
+## The Story
+
+Meet **Tukey the Turkey** (orange), named after the legendary statistician John W. Tukey. Every Thanksgiving, the President pardons one turkey who can perfectly demonstrate understanding of multidimensional rotations. The pardoning ceremony requires the turkey to follow a specific path through high-dimensional space. However, another turkey (cyan) has gotten lost and is following a rotated version of the correct path! Help Tukey guide the lost turkey back to the correct orientation by finding the hidden rotation. If you succeed, both turkeys earn their presidential pardon! 🦃🎖️
 
 ## Overview
 
-- Two curves are displayed: one fixed (orange) and one rotated by a secret rotation matrix (cyan)
+- Two curves are displayed: Tukey's correct path (orange, fixed) and the lost turkey's rotated path (cyan)
 - Hold on any off-diagonal cell (i, j) to rotate your basis in that plane
 - Align the cyan curve with the orange curve by finding the correct rotation
 - Choose from 2D to 5D spaces and different visualization modes
@@ -13,10 +17,10 @@ Master rotations in SO(n) by aligning curves through Tukey's scatterplot matrix 
 
 The challenge offers four visualization modes to help you see correspondences between curves:
 
+- **Turkey**: Animated turkey sprites that move in sync along both curves - the story mode
 - **Vanilla**: Solid colors (orange and cyan) - the classic view
 - **Rainbow**: Gradient colors along arclength showing how points correspond
 - **Numbered**: Six numbered dots along each path to track specific points
-- **Squirrel**: Animated markers that move in sync along both curves
 
 The grid overlay is optional and off by default—toggle it to see the world-aligned coordinate system.
 

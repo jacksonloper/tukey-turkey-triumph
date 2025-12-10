@@ -431,7 +431,7 @@ export class RotationChallenge {
    * Handle win condition
    */
   onWin() {
-    console.log('🎉 Challenge completed!');
+    console.log('🎉 Presidential pardon granted! Both turkeys are saved! 🦃🎖️');
   }
 
   /**
